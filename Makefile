@@ -5,10 +5,12 @@ KERNEL			= build/kernel-$(ARCH).elf
 HDD_IMAGE		= image.img
 
 COMMON_SRCS_C	= $(wildcard src/common/*.c)
+COMMON_SRCS_CPP	= $(wildcard src/common/*.cpp)
 COMMON_INCS_H	= -I src/common
 
-KERNEL_SRCS_CPP	= $(wildcard src/core/*.cpp) $(wildcard src/mm/*.cpp)
-KERNEL_OBJS		= $(patsubst src/%,build/%, $(patsubst %.cpp,%.o,$(KERNEL_SRCS_CPP)) $(patsubst %.c,%.o,$(COMMON_SRCS_C)))
+KERNEL_INCS_HPP	= -I src/system -I src/core
+KERNEL_SRCS_CPP	= $(wildcard src/core/*.cpp) $(wildcard src/mm/*.cpp) $(wildcard src/system/*.cpp)
+KERNEL_OBJS		= $(patsubst src/%,build/%,$(patsubst %.cpp,%.cpp.o,$(KERNEL_SRCS_CPP) $(patsubst %.c,%.c.o,$(COMMON_SRCS_C))) $(patsubst %.cpp,%.cpp.o,$(COMMON_SRCS_CPP))) 
 
 BOOT_SRCS_C		= $(wildcard src/boot/*.c)
 BOOT_OBJS		= $(patsubst src/%,build/%, $(patsubst %.c,%.o,$(BOOT_SRCS_C))) $(patsubst src/common/%,build/boot/%,$(patsubst %.c,%.o,$(COMMON_SRCS_C)))
@@ -19,23 +21,25 @@ EFI_INCS		= -I$(EFI_INC) -I$(EFI_INC)/$(ARCH) -I$(EFI_INC)/protocol
 BOOT_C_FLAGS	= $(EFI_INCS) $(COMMON_INCS_H) -fno-stack-protector -fpic -fshort-wchar -mno-red-zone -Wall -Wno-incompatible-library-redeclaration -O2 -static
 BOOT_LD_FLAGS	= -nostdlib -Wl,-dll -shared -Wl,--subsystem,10 -e efi_main -lgcc
 
-KERNEL_C_FLAGS	= $(COMMON_INCS_H) -fno-stack-protector -fpic -mno-red-zone -Wall -ffreestanding
-KERNEL_LD_FLAGS	= -nostdlib -e kernel_main -fPIC  -static -lgcc
+KERNEL_C_FLAGS	= $(COMMON_INCS_H) $(KERNEL_INCS_HPP) -fpic -mno-red-zone -Wall -ffreestanding -g
+KERNEL_LD_FLAGS	= -nostdlib -e kernel_main -fPIC -static -lgcc -g
 
 .PHONY: clean build run buildHDImg createHDImg
 
 build: $(BOOTLOADER) $(KERNEL)
 
-all: clean build buildHDImg run
+all: build buildHDImg run
 
-createHDImg:
+createHDImg: $(HDD_IMAGE)
+
+$(HDD_IMAGE):
 	rm -rf $(HDD_IMAGE)
 	dd if=/dev/zero of=$(HDD_IMAGE) bs=512 count=104448
 	parted $(HDD_IMAGE) -s -a minimal mklabel gpt
 	parted $(HDD_IMAGE) -s -a minimal mkpart EFI FAT32 2048s 102400s
 	parted $(HDD_IMAGE) -s -a minimal toggle 1 boot
 	
-buildHDImg: build
+buildHDImg: $(BOOTLOADER) $(KERNEL) $(HDD_IMAGE)
 	dd if=/dev/zero of=build/part.img bs=512 count=102400
 	mkfs.fat build/part.img
 	mmd -i build/part.img ::/EFI
@@ -53,7 +57,7 @@ clean:
 	rm -rf build
 
 run:
-	qemu-system-$(ARCH).exe -cpu qemu64 -bios OVMF.fd -drive file=$(HDD_IMAGE),media=disk
+	qemu-system-$(ARCH).exe -cpu qemu64 -bios OVMF.fd -drive file=$(HDD_IMAGE),media=disk -m 2048M -s 
 
 $(BOOTLOADER): $(BOOT_OBJS)
 	mkdir -p $(dir $@)
@@ -70,15 +74,23 @@ build/boot/%.o: src/boot/%.c
 build/boot/%.o: src/common/%.c
 	mkdir -p $(dir $@)
 	x86_64-w64-mingw32-gcc $(BOOT_C_FLAGS) -c $< -o $@
-	
-build/common/%.o: src/common/%.c
-	mkdir -p $(dir $@)
-	x86_64-w64-mingw32-gcc $(KERNEL_C_FLAGS) -c $< -o $@
-	
-build/core/%.o: src/core/%.cpp
+
+build/common/%.cpp.o: src/common/%.cpp
 	mkdir -p $(dir $@)
 	clang $(KERNEL_C_FLAGS) -c $< -o $@
 	
-build/mm/%.o: src/mm/%.cpp
+build/common/%.c.o: src/common/%.c
+	mkdir -p $(dir $@)
+	clang $(KERNEL_C_FLAGS) -c $< -o $@
+	
+build/core/%.cpp.o: src/core/%.cpp
+	mkdir -p $(dir $@)
+	clang $(KERNEL_C_FLAGS) -c $< -o $@
+	
+build/system/%.cpp.o: src/system/%.cpp
+	mkdir -p $(dir $@)
+	clang $(KERNEL_C_FLAGS) -c $< -o $@
+	
+build/mm/%.cpp.o: src/mm/%.cpp
 	mkdir -p $(dir $@)
 	clang $(KERNEL_C_FLAGS) -c $< -o $@

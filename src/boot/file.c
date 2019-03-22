@@ -32,13 +32,13 @@ FILE_DATA openFile(const wchar_t* path)
 		return data;
 
 	uint64_t size = info->FileSize;
-	free(info, infoSize);
+	release(info, infoSize);
 
 	uint8_t* buffer = (uint8_t*)allocate(size, (EFI_MEMORY_TYPE)0x80000001);
 
 	err = file->Read(file, &size, buffer);
 	if(err != EFI_SUCCESS) {
-		free(buffer, size);
+		release(buffer, size);
 		return data;
 	}
 

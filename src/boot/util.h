@@ -10,8 +10,12 @@ extern EFI_LOADED_IMAGE_PROTOCOL* LI;
 extern EFI_SIMPLE_FILE_SYSTEM_PROTOCOL* FS;
 extern EFI_GRAPHICS_OUTPUT_PROTOCOL* G;
 extern EFI_HANDLE IH;
+extern UINTN mapKey;
 
-void waitForKey();
-void exit(EFI_STATUS code);
+void  waitForKey();
+void  exit(EFI_STATUS code);
+void  closeBootServices();
+void* allocate(uint64_t size, EFI_MEMORY_TYPE type);
+void  release(void* block, uint64_t size);
 
 #endif
