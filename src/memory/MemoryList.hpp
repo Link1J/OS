@@ -2,26 +2,37 @@
 #define __LIST_HPP__
 
 namespace MemoryManager
-{	
-	
-
-	template<typename T>
-	class List
+{
+	class MemoryList
 	{
-	private:
-		
-		
 	public:
-		List(): head(nullptr), tail(nullptr) {}
+		struct Segment
+		{
+			Segment* next;
+			Segment* prev;
+			uint64_t base;
+			uint64_t size
+		};
 		
-		Node<T>*	begin	() { return head	; }
-		Node<T>*	end		() { return nullptr	; }
-		Node<T>*	rbegin	() { return tail	; }
-		Node<T>*	rend	() { return nullptr	; }
+	private:
+		Segment* 	head;
+		Segment* 	tail;
+		int 		size;
+	
+	public:
+		MemoryList(): head(nullptr), tail(nullptr), size(0) {}
+		
+		Segment*	Begin	() { return head	; }
+		Segment*	End		() { return nullptr	; }
 		int			Size	() { return size	; }
 		
-		void AddNode(Node<T>* newNode)
+		void MarkFree(void* memory, uint64_t size)
 		{
+			Segment* newNode = (Segment*)memory;
+			
+			newNode->base = (uint64_t)memory;
+			newNode->base = size;
+			
 			newNode->next = nullptr;
 			newNode->prev = nullptr;
 			
@@ -39,27 +50,48 @@ namespace MemoryManager
 			
 			size++;
 		}
+		
+		void* FindFree(uint64_t sizeWanted)
+		{
+			for (auto pages = head; pages != nullptr; pages = pages->next)
+				if (pages->data.size >= sizeWanted)
+					return pages;
+				
+			return nullptr;
+		}
 	
-		void UpdateHead(Node<T>* newNode)
+		void MarkedUsed(void* segment, uint64_t sizeWanted)
 		{
-			head = newNode;
-		}
-		
-		void UpdateTail(Node<T>* newNode)
-		{
-			tail = newNode;
-		}
-		
-		void RemoveNode(Node<T>* newNode)
-		{
-			newNode->prev->next = newNode->next;
-			
-			if (tail == newNode)
-				tail = newNode->prev;
-			else 
-				newNode->next->prev = newNode->prev;
-			
-			size--;
+			if (pages->data.size == sizeWanted)
+			{
+				pages->prev->next = pages->next;
+
+				if (tail == pages)
+					tail = pages->prev;
+				else 
+					pages->next->prev = pages->prev;
+				
+				size--;
+			}
+			else if (pages->data.size > sizeWanted)
+			{
+				Segment* newNode = (Segment*)((char*)pages + sizeWanted);
+					
+				newNode->next = pages->next;
+				newNode->prev = pages->prev;
+				newNode->data.base = pages->data.base + sizeWanted;
+				newNode->data.size = pages->data.size - sizeWanted;
+						
+				if(pages->prev != nullptr)
+					pages->prev->next = newNode;
+				else
+					head = newNode;
+						
+				if(pages->next != nullptr)
+					pages->next->prev = newNode;
+				else
+					tail = newNode;
+			}
 		}
 	};
 }

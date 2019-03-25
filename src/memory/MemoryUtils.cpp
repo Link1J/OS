@@ -1,5 +1,5 @@
 #include <stddef.h>
-#include <liballoc_1_1.h>
+#include "KernelHeap.hpp"
 
 extern "C" void* memcpy(void* dsc, void* src, size_t n)
 {
@@ -34,26 +34,41 @@ extern "C" int memcmp(const void *s1, const void *s2, size_t n)
 	return 0;
 }
 
+extern "C" void* malloc(size_t size)
+{
+	return KernelHeap::Allocate(size);
+}
+
+extern "C" void free(void* block)
+{
+	KernelHeap::Free(block);
+}
+
 void* operator new(size_t size)
 {
     return malloc(size);
 }
+
 void* operator new[](size_t size)
 {
     return operator new(size);
 }
+
 void operator delete(void* block)
 {
     free(block);
 }
+
 void operator delete(void* block, size_t size)
 {
     operator delete(block);
 }
+
 void operator delete[](void* block, size_t size)
 {
     operator delete(block);
 }
+
 void operator delete[](void* block)
 {
     operator delete(block);

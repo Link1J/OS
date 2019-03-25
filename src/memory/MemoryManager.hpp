@@ -11,4 +11,7 @@ namespace MemoryManager
 	
 	void*	AllocatePages	(uint64_t numPages				);
 	void	FreePages		(void* pages, uint64_t numPages	);
+	
+	void MapKernelPage	(void* phys, void* virt	);
+    void UnmapKernelPage(void* virt				);
 }

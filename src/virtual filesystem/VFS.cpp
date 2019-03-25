@@ -1,7 +1,19 @@
 #include "VFS.hpp"
+#include "Vector.hpp"
 
 namespace VFS
 {
+	struct FileDescriptor
+    {
+        uint64_t id;
+
+        uint64_t node;
+        uint64_t pos;
+    };
+	
+	static Vector<Node*> nodes;
+    static uint64_t firstFreeNode;
+	
 	Node* FindNode(Node* folder, const char* name)
 	{
 		if(folder->type != Node::TYPE_DIRECTORY)
@@ -72,6 +84,23 @@ namespace VFS
     void WriteFile(uint64_t file, void* buffer, uint64_t bufferSize);
     void SeekFile(uint64_t file, uint64_t pos);
 
-    Node* GetNode(uint64_t id);
-    Node* GetFreeNode();
+    Node* GetNode(uint64_t id) {
+		if (
+        return nodes[id - 1];
+    }
+
+    Node* GetFreeNode()
+    {
+        if(firstFreeNode != 0) {
+            Node* ret = GetNode(firstFreeNode);
+            g_FirstFreeNode = ret->numReaders;
+            return ret;
+        } else {
+            Node* n = new Node();
+            memset(n, 0, sizeof(Node));
+            n->id = g_Nodes.size() + 1;
+            g_Nodes.push_back(n);
+            return n;
+        }
+    }
 }

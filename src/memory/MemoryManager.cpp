@@ -44,65 +44,16 @@
 
 namespace MemoryManager
 {	
-	struct Segment
-	{
-		Segment* next;
-		Segment* prev;
-		uint64_t base;
-		uint64_t size
-	};
-
-	static Segment<T>* 	head;
-	static Segment<T>* 	tail;
-	static int 			size;
-	
+	static MemoryList	freeMemory;
 	static uint64_t		highMemoryBase;
 	static uint64_t*	pageTableLevel4;
 	
-	void AddNode(void* memory, uint64_t size)
-	{
-		Segment* newNode = (Segment*)memory;
-			
-		newNode->base = (uint64_t)memory;
-		newNode->base = size;
-			
-		newNode->next = nullptr;
-		newNode->prev = nullptr;
-			
-		if (head == nullptr)
-		{
-			head = newNode;
-			tail = newNode;
-		}
-		else
-		{
-			tail->next = newNode;
-			newNode->prev = tail;
-			tail = newNode;
-		}
-			
-		size++;
-	}
 	
-	void RemoveNode(Segment* newNode)
-	{
-		newNode->prev->next = newNode->next;
-		
-		if (tail == newNode)
-			tail = newNode->prev;
-		else 
-			newNode->next->prev = newNode->prev;
-			
-		size--;
-	}
-		
 	void Init(PhysicalMapSegment* physMapStart, uint64_t* pageBuffer, uint64_t highMemoryBaseIn)
 	{
 		printf("Starting Memory manager\n");
 		
-		head = nullptr;
-		tail = nullptr;
-		size = 0;
+		freeMemory = MemoryList();
 		
 		highMemoryBase = highMemoryBaseIn;
 		pageTableLevel4 = pageBuffer;
@@ -120,7 +71,7 @@ namespace MemoryManager
 			size = curr->numPages * 4096;
 			next = curr->next;
 			
-			AddNode(curr, size);
+			freeMemory.MarkFree(curr, size);
 			
 			curr = next;
 			availableMemory += size;
@@ -153,46 +104,84 @@ namespace MemoryManager
 	void* AllocatePages(uint64_t numPages)
     {
 		if (size == 0)
-			Error::Panic("Out of memory!");
+			Error::Panic("Out of memory! (MemoryManager)");
 		
-		int sizeWanted = numPages * 4096;
-		for (auto pages = head; pages != nullptr; pages = pages->next)
+		void* mem = freeMemory.FindFree(numPages * 4096);
+		if (mem != nullptr)
 		{
-			if (pages->data.size >= sizeWanted)
-			{
-				if (pages->data.size == sizeWanted)
-				{
-					RemoveNode(pages);
-				}
-				else if (pages->data.size > sizeWanted)
-				{
-					Segment* newNode = (Segment*)((char*)pages + sizeWanted);
-				
-					newNode->next = pages->next;
-					newNode->prev = pages->prev;
-					newNode->data.base = pages->data.base + sizeWanted;
-					newNode->data.size = pages->data.size - sizeWanted;
-					
-					if(pages->prev != nullptr)
-						pages->prev->next = newNode;
-					else
-						head = newNode;
-					
-					if(pages->next != nullptr)
-						pages->next->prev = newNode;
-					else
-						tail = newNode;
-				}
-				return KernelToPhysicalPtr(pages);
-			}
+			freeMemory.MarkedUsed(mem, numPages * 4096);
+			mem = KernelToPhysicalPtr(mem);
 		}
-
-        return nullptr;
+		
+        return mem;
     }
 
     void FreePages(void* pages, uint64_t numPages)
     {
-		int size = numPages * 4096;		
-		AddNode(pages, size);
+		freeMemory.MarkFree(pages, numPages * 4096);
+    }
+	
+	void MapKernelPage(void* phys, void* virt)
+    {
+		uint64_t pml4Index = GET_PML4_INDEX((uint64_t)virt);
+        uint64_t pml3Index = GET_PML3_INDEX((uint64_t)virt);
+        uint64_t pml2Index = GET_PML2_INDEX((uint64_t)virt);
+        uint64_t pml1Index = GET_PML1_INDEX((uint64_t)virt);
+
+        uint64_t pml4Entry = g_PML4[pml4Index];
+        uint64_t* pml3 = (uint64_t*)PhysToKernelPtr((void*)PML_GET_ADDR(pml4Entry));
+
+        uint64_t pml3Entry = pml3[pml3Index];
+        uint64_t* pml2;
+        if(!PML_GET_P(pml3Entry)) {
+            pml2 = (uint64_t*)PhysToKernelPtr(AllocatePages());
+            for(int i = 0; i < 512; i++)
+                pml2[i] = 0;
+            pml3[pml3Index] = PML_SET_ADDR((uint64_t)KernelToPhysPtr(pml2)) | PML_SET_P(1) | PML_SET_RW(1);
+        } else {
+            pml2 = (uint64_t*)PhysToKernelPtr((void*)PML_GET_ADDR(pml3Entry));
+        }
+
+        uint64_t pml2Entry = pml2[pml2Index];
+        uint64_t* pml1;
+        if(!PML_GET_P(pml2Entry)) {
+            pml1 = (uint64_t*)PhysToKernelPtr(AllocatePages());
+            for(int i = 0; i < 512; i++)
+                pml1[i] = 0;
+            pml2[pml2Index] = PML_SET_ADDR((uint64_t)KernelToPhysPtr(pml1)) | PML_SET_P(1) | PML_SET_RW(1);
+        } else {
+            pml1 = (uint64_t*)PhysToKernelPtr((void*)PML_GET_ADDR(pml2Entry));
+        }
+
+        pml1[pml1Index] = PML_SET_ADDR((uint64_t)phys) | PML_SET_P(1) | PML_SET_RW(1);
+
+        __asm__ __volatile__ (
+            "invlpg (%0)"
+            : : "r"(virt)
+        );
+    }
+	
+    void UnmapKernelPage(void* virt)
+    {
+        uint64_t pml4Index = GET_PML4_INDEX((uint64_t)virt);
+        uint64_t pml3Index = GET_PML3_INDEX((uint64_t)virt);
+        uint64_t pml2Index = GET_PML2_INDEX((uint64_t)virt);
+        uint64_t pml1Index = GET_PML1_INDEX((uint64_t)virt);
+
+        uint64_t pml4Entry = g_PML4[pml4Entry];
+        uint64_t* pml3 = (uint64_t*)PhysToKernelPtr((void*)PML_GET_ADDR(pml4Entry));
+
+        uint64_t pml3Entry = pml3[pml3Index];
+        uint64_t* pml2 = (uint64_t*)PhysToKernelPtr((void*)PML_GET_ADDR(pml3Entry));
+
+        uint64_t pml2Entry = pml2[pml2Index];
+        uint64_t* pml1 = (uint64_t*)PhysToKernelPtr((void*)PML_GET_ADDR(pml2Entry));
+
+        pml1[pml1Index] = 0;
+
+        __asm__ __volatile__ (
+            "invlpg (%0)"
+            : : "r"(virt)
+        );
     }
 }
