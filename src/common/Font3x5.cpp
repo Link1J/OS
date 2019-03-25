@@ -1,4 +1,4 @@
-#include "Font.hpp"
+#include "Font3x5.hpp"
 
 uint32_t data[] = {
 	0b00010101,0b01010101,0b00011111,
@@ -130,7 +130,7 @@ uint32_t data[] = {
 	0b10010011,0b11111111,0b11111111,// ~
 };
 
-namespace Font
+namespace Font3x5
 {
 	uint32_t Width  () { return 4; }
 	uint32_t Height () { return 6; }

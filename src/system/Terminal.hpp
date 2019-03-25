@@ -7,6 +7,7 @@ namespace Terminal
 
 	void SetCursor			(int x, int y								);
 	void PrintChar			(char c										);
+	void PrintSymbol		(char c										);
 	void SetForegoundColor	(uint8_t red, uint8_t green, uint8_t blue	);
 	void SetBackgoundColor	(uint8_t red, uint8_t green, uint8_t blue	);
 	

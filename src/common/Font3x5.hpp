@@ -1,6 +1,6 @@
 #include <cstdint>
 
-namespace Font
+namespace Font3x5
 {
 	uint32_t Width  ();
 	uint32_t Height ();

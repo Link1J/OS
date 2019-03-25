@@ -1,43 +1,42 @@
-#ifndef __ELF_H__
-#define __ELF_H__
+#pragma once
 
-#include <stdint.h>
-#include <stdbool.h>
+#include "types.h"
 
-typedef unsigned long long	ElfAddr;
-typedef unsigned long long	ElfOffs;
-typedef unsigned short		ElfHalf;
-typedef unsigned int 		ElfWord;
-typedef signed int 			ElfSWord;
-typedef unsigned long long	ElfXWord;
-typedef signed long long	ElfSXWord;
-typedef unsigned char		ElfByte;
-typedef unsigned short		ElfSection;
+typedef unsigned long long Elf64Addr;
+typedef unsigned long long Elf64Offs;
+typedef unsigned short Elf64Half;
+typedef unsigned int Elf64Word;
+typedef signed int Elf64SWord;
+typedef unsigned long long Elf64XWord;
+typedef signed long long Elf64SXWord;
+typedef unsigned char Elf64Byte;
+typedef unsigned short Elf64Section;
 
-struct _ELF_HEADER
-{
-	ElfWord		magic;
-	ElfByte		class;
-	ElfByte		data;
-	ElfByte		version;
-	ElfByte		ABI;
-	ElfByte		ABI_version;
-	ElfByte		pad[7];
-	ElfHalf		type;
-	ElfHalf		machine;
-	ElfByte		version2;
-	ElfAddr		entry_point;
-	ElfOffs		program_header_offset;
-	ElfOffs		section_header_offset;
-	ElfWord		flags;
-	ElfHalf		header_size;
-	ElfHalf		program_header_size;
-	ElfHalf		program_header_entries;
-	ElfHalf		section_header_size;
-	ElfHalf		section_header_entries;
-	ElfHalf		section_strings_entry;
-}__attribute__((packed));
-typedef struct _ELF_HEADER ELF_HEADER;
+uint64 GetELFSize(const uint8* image);
+uint64 GetELFTextAddr(const uint8* image, const uint8* processImg);
+bool PrepareELF(const uint8* diskImg, uint8* processImg, Elf64Addr* entryPoint);
+
+struct ELFHeader {
+    Elf64Byte magic[4];
+    Elf64Byte elfBits;
+    Elf64Byte endianness;
+    Elf64Byte elfVersion;
+    Elf64Byte abi;
+    Elf64Byte padding[8];
+    Elf64Half objectType;
+    Elf64Half machineType;
+    Elf64Word elfXVersion;
+    Elf64Addr entryPoint;
+    Elf64Offs phOffset;
+    Elf64Offs shOffset;
+    Elf64Word flags;
+    Elf64Half headerSize;
+    Elf64Half phEntrySize;
+    Elf64Half phEntryCount;
+    Elf64Half shEntrySize;
+    Elf64Half shEntryCount;
+    Elf64Half sectionNameStringTableIndex;
+};
 
 #define ELFCLASS32 1
 #define ELFCLASS64 2
@@ -58,20 +57,18 @@ typedef struct _ELF_HEADER ELF_HEADER;
 #define EMT_X86_64 0x3E
 #define EMT_IA64 0x32
 
-struct _ELF_SECTION_HEADER
-{
-	ElfWord		name;
-	ElfWord		type;
-	ElfXWord	flags;
-	ElfAddr		virtual_address;
-	ElfOffs		offset;
-	ElfXWord	size;
-	ElfWord		link;
-	ElfWord		info;
-	ElfXWord	address_align;
-	ElfXWord	entry_size;
-}__attribute__((packed));
-typedef struct _ELF_SECTION_HEADER ELF_SECTION_HEADER;
+struct ELFSectionHeader {
+    Elf64Word nameOffset;
+    Elf64Word type;
+    Elf64XWord flags;
+    Elf64Addr virtualAddress;
+    Elf64Offs fileOffset;
+    Elf64XWord size;
+    Elf64Word link;
+    Elf64Word info;
+    Elf64XWord alignment;
+    Elf64XWord entrySize;
+};
 
 #define SHT_NULL 0
 #define SHT_PROGBITS 1
@@ -90,18 +87,16 @@ typedef struct _ELF_SECTION_HEADER ELF_SECTION_HEADER;
 #define SHF_ALLOC 0x02
 #define SHF_EXECINSTR 0x04
 
-struct _ELF_PROGRAM_HEADER
-{
-	ElfWord		type;
-	ElfWord		flags;
-	ElfOffs		offset;
-	ElfAddr		virtual_address;
-	ElfAddr		physical_address;
-	ElfXWord	file_size;
-	ElfXWord	memory_size;
-	ElfXWord	align;
-}__attribute__((packed));
-typedef struct _ELF_PROGRAM_HEADER ELF_PROGRAM_HEADER;
+struct ElfSegmentHeader {
+    Elf64Word type;
+    Elf64Word flags;
+    Elf64Offs dataOffset;
+    Elf64Addr virtualAddress;
+    Elf64XWord unused;
+    Elf64XWord dataSize;
+    Elf64XWord virtualSize;
+    Elf64XWord alignment;
+};
 
 #define PT_NULL 0
 #define PT_LOAD 1
@@ -113,11 +108,10 @@ typedef struct _ELF_PROGRAM_HEADER ELF_PROGRAM_HEADER;
 #define PF_WRITABLE 2
 #define PF_READABLE 4
 
-struct _ELF_DYNAMIC_ENTRY {
-    ElfSXWord	tag;
-    ElfXWord	value;
-}__attribute__((packed));
-typedef struct _ELF_DYNAMIC_ENTRY ELF_DYNAMIC_ENTRY;
+struct ElfDynamicEntry {
+    Elf64SXWord tag;
+    Elf64XWord value;
+};
 
 #define DT_NULL 0
 #define DT_NEEDED 1
@@ -140,15 +134,14 @@ typedef struct _ELF_DYNAMIC_ENTRY ELF_DYNAMIC_ENTRY;
 #define DT_INIT_ARRAY 0x19
 #define DT_INIT_ARRAYSZ 0x1B
 
-struct _ELF_SYMBOL {
-    ElfWord		symbolNameOffset;
-    ElfByte		info;
-    ElfByte		reserved;
-    ElfHalf		sectionTableIndex;
-    ElfAddr		value;
-    ElfXWord	size;
-}__attribute__((packed));
-typedef struct _ELF_SYMBOL ELF_SYMBOL;
+struct ElfSymbol {
+    Elf64Word symbolNameOffset;
+    Elf64Byte info;
+    Elf64Byte reserved;
+    Elf64Half sectionTableIndex;
+    Elf64Addr value;
+    Elf64XWord size;
+};
 
 #define STB_LOCAL 0
 #define STB_GLOBAL 1
@@ -160,12 +153,11 @@ typedef struct _ELF_SYMBOL ELF_SYMBOL;
 #define STT_SECTION 3
 #define STT_FILE 4
 
-struct _ELF_REL_A {
-    ElfAddr		address;
-    ElfXWord	info;
-    ElfSXWord	addend;
-}__attribute__((packed));
-typedef struct _ELF_REL_A ELF_REL_A;
+struct ElfRelA {
+    Elf64Addr address;
+    Elf64XWord info;
+    Elf64SXWord addend;
+};
 
 #define R_NONE 0
 #define R_64 1
@@ -200,9 +192,3 @@ typedef struct _ELF_REL_A ELF_REL_A;
 #define R_TLSDESC_CALL 35
 #define R_TLSDESC 36
 #define R_IRELATIVE 37
-
-uint64_t getELFSize(const uint8_t* image);
-uint64_t getELFTextAddr(const uint8_t* image, const uint8_t* processImg);
-bool     prepareELF(const uint8_t* diskImg, uint8_t* processImg, ElfAddr* entryPoint);
-
-#endif

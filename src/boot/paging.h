@@ -1,9 +1,10 @@
-#ifndef __PAGING_H__
-#define __PAGING_H__
+#pragma once
 
-#include "kernel_header.h"
+#include "KernelHeader.h"
 
-void initPaging(KernelHeader* header);
-void* convertPtr(void* pointer);
+namespace Paging
+{
+    void Init(KernelHeader* header);
 
-#endif
+    void* ConvertPtr(void* ptr);
+}

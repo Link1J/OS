@@ -1,15 +1,15 @@
-#ifndef __FILE_H__
-#define __FILE_H__
+#pragma once
 
-#include <stdint.h>
+#include "types.h"
+#include "KernelHeader.h"
 
-struct _FILE_DATA
-{
-	uint64_t	size;
-	uintptr_t	data;
-};
-typedef struct _FILE_DATA FILE_DATA;
+namespace FileIO {
 
-FILE_DATA openFile(const wchar_t* path);
+    struct FileData {
+        uint64 size;
+        uint8* data;
+    };
 
-#endif
+    FileData ReadFile(const wchar_t* path);
+
+}

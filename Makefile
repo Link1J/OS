@@ -8,12 +8,17 @@ COMMON_SRCS_C	= $(wildcard src/common/*.c)
 COMMON_SRCS_CPP	= $(wildcard src/common/*.cpp)
 COMMON_INCS_H	= -I src/common
 
-KERNEL_INCS_HPP	= -I src/system -I src/core
-KERNEL_SRCS_CPP	= $(wildcard src/core/*.cpp) $(wildcard src/mm/*.cpp) $(wildcard src/system/*.cpp)
-KERNEL_OBJS		= $(patsubst src/%,build/%,$(patsubst %.cpp,%.cpp.o,$(KERNEL_SRCS_CPP) $(patsubst %.c,%.c.o,$(COMMON_SRCS_C))) $(patsubst %.cpp,%.cpp.o,$(COMMON_SRCS_CPP))) 
+KERNEL_INCS_HPP	= -I src/system -I src/core -I src/memory
+KERNEL_SRCS_CPP	= $(wildcard src/core/*.cpp) $(wildcard src/memory/*.cpp) $(wildcard src/system/*.cpp)
+KERNEL_SRCS_ASM	= $(wildcard src/core/*.asm)
+KERNEL_OBJS_SRC	= $(patsubst src/%,build/%,$(patsubst %.cpp,%.cpp.o,$(KERNEL_SRCS_CPP)))
+KERNEL_OBJS_COC	= $(patsubst src/%,build/%,$(patsubst %.c,%.c.o,$(COMMON_SRCS_C)))
+KERNEL_OBJS_COP	= $(patsubst src/%,build/%,$(patsubst %.cpp,%.cpp.o,$(COMMON_SRCS_CPP)))
+KERNEL_OBJS_ASM = $(patsubst src/%,build/%,$(patsubst %.asm,%.asm.o,$(KERNEL_SRCS_ASM)))
+KERNEL_OBJS		= $(KERNEL_OBJS_COC) $(KERNEL_OBJS_SRC) $(KERNEL_OBJS_ASM) $(KERNEL_OBJS_COP)
 
-BOOT_SRCS_C		= $(wildcard src/boot/*.c)
-BOOT_OBJS		= $(patsubst src/%,build/%, $(patsubst %.c,%.o,$(BOOT_SRCS_C))) $(patsubst src/common/%,build/boot/%,$(patsubst %.c,%.o,$(COMMON_SRCS_C)))
+BOOT_SRCS_C		= $(wildcard src/boot/*.cpp)
+BOOT_OBJS		= $(patsubst src/%,build/%, $(patsubst %.cpp,%.o,$(BOOT_SRCS_C)))
 
 EFI_INC			= /usr/include/efi
 EFI_INCS		= -I$(EFI_INC) -I$(EFI_INC)/$(ARCH) -I$(EFI_INC)/protocol
@@ -21,43 +26,52 @@ EFI_INCS		= -I$(EFI_INC) -I$(EFI_INC)/$(ARCH) -I$(EFI_INC)/protocol
 BOOT_C_FLAGS	= $(EFI_INCS) $(COMMON_INCS_H) -fno-stack-protector -fpic -fshort-wchar -mno-red-zone -Wall -Wno-incompatible-library-redeclaration -O2 -static
 BOOT_LD_FLAGS	= -nostdlib -Wl,-dll -shared -Wl,--subsystem,10 -e efi_main -lgcc
 
-KERNEL_C_FLAGS	= $(COMMON_INCS_H) $(KERNEL_INCS_HPP) -fpic -mno-red-zone -Wall -ffreestanding -g
-KERNEL_LD_FLAGS	= -nostdlib -e kernel_main -fPIC -static -lgcc -g
+KERNEL_C_FLAGS	= $(COMMON_INCS_H) $(KERNEL_INCS_HPP) -fPIC -mno-red-zone -Wall -ffreestanding -g -O0
+KERNEL_AS_FLAGS	= $(subst -I,-i,$(COMMON_INCS_H) $(KERNEL_INCS_HPP))
+KERNEL_LD_FLAGS	= -nostdlib -fPIC -static -lgcc -g -O0
+#-e kernel_main
 
-.PHONY: clean build run buildHDImg createHDImg
+.PHONY: clean build run buildHDImg createHDImg disassemble
 
 build: $(BOOTLOADER) $(KERNEL)
 
-all: build buildHDImg run
+all: clean build disassemble buildHDImg run
 
 createHDImg: $(HDD_IMAGE)
 
 $(HDD_IMAGE):
 	rm -rf $(HDD_IMAGE)
-	dd if=/dev/zero of=$(HDD_IMAGE) bs=512 count=104448
+	dd if=/dev/zero of=$(HDD_IMAGE) bs=512 count=205048
 	parted $(HDD_IMAGE) -s -a minimal mklabel gpt
-	parted $(HDD_IMAGE) -s -a minimal mkpart EFI FAT32 2048s 102400s
+	parted $(HDD_IMAGE) -s -a minimal mkpart EFI FAT32 2048s 204800s
 	parted $(HDD_IMAGE) -s -a minimal toggle 1 boot
 	
 buildHDImg: $(BOOTLOADER) $(KERNEL) $(HDD_IMAGE)
-	dd if=/dev/zero of=build/part.img bs=512 count=102400
+	dd if=/dev/zero of=build/part.img bs=512 count=204800
 	mkfs.fat build/part.img
 	mmd -i build/part.img ::/EFI
 	mmd -i build/part.img ::/EFI/BOOT
 	
 	cp $(BOOTLOADER) build/bootx64.efi
 	cp $(KERNEL) build/kernel.elf
+	strip build/kernel.elf
+	
 	mcopy -i build/part.img build/bootx64.efi ::/EFI/BOOT
 	mcopy -i build/part.img build/kernel.elf ::/
 	
-	dd if=build/part.img of=$(HDD_IMAGE) bs=512 count=102400 seek=2048 conv=notrunc
+	dd if=build/part.img of=$(HDD_IMAGE) bs=512 count=204800 seek=2048 conv=notrunc
 	rm -rf build/part.img build/bootx64.efi build/kernel.elf
 
 clean:
 	rm -rf build
+	
+disassemble:
+	rm -rf dis.txt
+	objdump -d build/kernel-x86_64.elf >> dis.txt
 
 run:
-	qemu-system-$(ARCH).exe -cpu qemu64 -bios OVMF.fd -drive file=$(HDD_IMAGE),media=disk -m 2048M -s 
+	rm -rf log.txt
+	qemu-system-$(ARCH).exe -cpu qemu64 -bios OVMF.fd -drive file=$(HDD_IMAGE),media=disk -m 2048M -s -d int -D log.txt
 
 $(BOOTLOADER): $(BOOT_OBJS)
 	mkdir -p $(dir $@)
@@ -65,11 +79,11 @@ $(BOOTLOADER): $(BOOT_OBJS)
 	
 $(KERNEL) : $(KERNEL_OBJS)
 	mkdir -p $(dir $@)
-	gcc $(KERNEL_OBJS) $(KERNEL_LD_FLAGS) -o $(KERNEL)
+	clang $(KERNEL_OBJS) $(KERNEL_LD_FLAGS) -o $(KERNEL)
 	
-build/boot/%.o: src/boot/%.c
+build/boot/%.o: src/boot/%.cpp
 	mkdir -p $(dir $@)
-	x86_64-w64-mingw32-gcc $(BOOT_C_FLAGS) -c $< -o $@
+	x86_64-w64-mingw32-gcc  $(BOOT_C_FLAGS) -c $< -o $@
 
 build/boot/%.o: src/common/%.c
 	mkdir -p $(dir $@)
@@ -87,10 +101,14 @@ build/core/%.cpp.o: src/core/%.cpp
 	mkdir -p $(dir $@)
 	clang $(KERNEL_C_FLAGS) -c $< -o $@
 	
+build/memory/%.cpp.o: src/memory/%.cpp
+	mkdir -p $(dir $@)
+	clang $(KERNEL_C_FLAGS) -c $< -o $@
+	
 build/system/%.cpp.o: src/system/%.cpp
 	mkdir -p $(dir $@)
 	clang $(KERNEL_C_FLAGS) -c $< -o $@
 	
-build/mm/%.cpp.o: src/mm/%.cpp
+build/core/%.asm.o: src/core/%.asm
 	mkdir -p $(dir $@)
-	clang $(KERNEL_C_FLAGS) -c $< -o $@
+	nasm -g -f elf64 $(KERNEL_AS_FLAGS) $< -o $@

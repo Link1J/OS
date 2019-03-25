@@ -37,7 +37,7 @@ namespace Screen
 		color.RGBA.green = color.RGBA.green	+ curr.RGBA.green	;
 		color.RGBA.blue	 = color.RGBA.blue	+ curr.RGBA.blue	;
 		
-		if (data.invertColors)
+		if (!data.invertColors)
 		{
 			curr = color;
 			
