@@ -73,3 +73,20 @@ void operator delete[](void* block)
 {
     operator delete(block);
 }
+
+// string.h functions
+
+extern "C" size_t strlen(const char *s)
+{
+	size_t size = 0;
+	while (*s++ != '\0')
+		size++;
+	return size;
+}
+
+extern "C" size_t strcmp(const char *s1, const char *s2)
+{
+	int s1l = strlen(s1);
+	int s2l = strlen(s2);
+	return memcmp(s1, s2, s1l < s2l ? s1l : s2l);
+}

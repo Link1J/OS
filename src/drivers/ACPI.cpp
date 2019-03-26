@@ -4,6 +4,7 @@
 #include "Error.hpp"
 
 #include <stdint.h>
+#include <string.h>
 #include "printf.h"
 
 namespace ACPI

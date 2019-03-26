@@ -6,18 +6,18 @@ namespace KernelHeap {
 
     constexpr uint64_t heapBase = ((uint64_t)510 << 39) | 0xFFFF000000000000;
 
-    static MemoryList freeMemory;
-    static uint64_t heapPos = HeapBase;
+    static MemoryManager::MemoryList freeMemory;
+    static uint64_t heapPos = heapBase;
 
     static void* ReserveNew(uint64_t size) 
     {
         size = (size + 4095) / 4096;
         void* g = MemoryManager::AllocatePages(size);
         for(int i = 0; i < size; i++)
-            MemoryManager::MapKernelPage((char*)g + 4096 * i, (char*)g_HeapPos + 4096 * i);
-        g_FreeList.MarkFree((void*)g_HeapPos, size * 4096);
-        void* ret = (void*)g_HeapPos;
-        g_HeapPos += size * 4096;
+            MemoryManager::MapKernelPage((char*)g + 4096 * i, (char*)heapPos + 4096 * i);
+        freeMemory.MarkFree((void*)heapPos, size * 4096);
+        void* ret = (void*)heapPos;
+        heapPos += size * 4096;
         return ret;
     }
 

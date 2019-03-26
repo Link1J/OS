@@ -8,8 +8,8 @@ COMMON_SRCS_C	= $(wildcard src/common/*.c)
 COMMON_SRCS_CPP	= $(wildcard src/common/*.cpp)
 COMMON_INCS_H	= -I src/common
 
-KERNEL_INCS_HPP	= -I src/system -I src/core -I src/memory
-KERNEL_SRCS_CPP	= $(wildcard src/core/*.cpp) $(wildcard src/memory/*.cpp) $(wildcard src/system/*.cpp)
+KERNEL_INCS_HPP	= -I src/system -I src/core -I src/memory -I src/filesystem -I src/drivers
+KERNEL_SRCS_CPP	= $(wildcard src/core/*.cpp) $(wildcard src/memory/*.cpp) $(wildcard src/system/*.cpp) $(wildcard src/filesystem/*.cpp) $(wildcard src/drivers/*.cpp)
 KERNEL_SRCS_ASM	= $(wildcard src/core/*.asm)
 KERNEL_OBJS_SRC	= $(patsubst src/%,build/%,$(patsubst %.cpp,%.cpp.o,$(KERNEL_SRCS_CPP)))
 KERNEL_OBJS_COC	= $(patsubst src/%,build/%,$(patsubst %.c,%.c.o,$(COMMON_SRCS_C)))
@@ -26,9 +26,9 @@ EFI_INCS		= -I$(EFI_INC) -I$(EFI_INC)/$(ARCH) -I$(EFI_INC)/protocol
 BOOT_C_FLAGS	= $(EFI_INCS) $(COMMON_INCS_H) -fno-stack-protector -fpic -fshort-wchar -mno-red-zone -Wall -Wno-incompatible-library-redeclaration -O2 -static
 BOOT_LD_FLAGS	= -nostdlib -Wl,-dll -shared -Wl,--subsystem,10 -e efi_main -lgcc
 
-KERNEL_C_FLAGS	= $(COMMON_INCS_H) $(KERNEL_INCS_HPP) -fPIC -mno-red-zone -Wall -ffreestanding -g -O0
+KERNEL_C_FLAGS	= $(COMMON_INCS_H) $(KERNEL_INCS_HPP) -fPIC -mno-red-zone -Wall -ffreestanding -g -O0 -fno-rtti -fno-exceptions
 KERNEL_AS_FLAGS	= $(subst -I,-i,$(COMMON_INCS_H) $(KERNEL_INCS_HPP))
-KERNEL_LD_FLAGS	= -nostdlib -fPIC -static -lgcc -g -O0
+KERNEL_LD_FLAGS	= -nostdlib -fPIC -static -lgcc -g -O0 -fno-rtti -fno-exceptions
 #-e kernel_main
 
 .PHONY: clean build run buildHDImg createHDImg disassemble
@@ -112,3 +112,11 @@ build/system/%.cpp.o: src/system/%.cpp
 build/core/%.asm.o: src/core/%.asm
 	mkdir -p $(dir $@)
 	nasm -g -f elf64 $(KERNEL_AS_FLAGS) $< -o $@
+
+build/filesystem/%.cpp.o: src/filesystem/%.cpp
+	mkdir -p $(dir $@)
+	clang $(KERNEL_C_FLAGS) -c $< -o $@
+	
+build/drivers/%.cpp.o: src/drivers/%.cpp
+	mkdir -p $(dir $@)
+	clang $(KERNEL_C_FLAGS) -c $< -o $@

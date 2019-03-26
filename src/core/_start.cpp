@@ -40,11 +40,6 @@ extern "C" void __attribute__((noreturn)) _start(KernelHeader* info)
 	IDT				::Init(																);
 	
 	VFS::Init();
-	if(!VFS::CreateFolder("/", "devices"))
-		Error::Panic("Failed to create /devices folder\n");
-	if(!VFS::CreateFolder("/", "system"))
-		Error::Panic("Failed to create /system folder\n");
-
 	
 	ACPI::Init(info->RSDPStructure);
 	

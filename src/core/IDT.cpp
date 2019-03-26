@@ -5,6 +5,7 @@
 
 #include "printf.h"
 #include <stdint.h>
+#include <string.h>
 
 #define ISRSTUB(vectno) extern "C" void ISRSTUB_##vectno();
 #define ISRSTUBE(vectno) extern "C" void ISRSTUB_##vectno();

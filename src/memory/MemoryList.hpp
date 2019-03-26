@@ -11,7 +11,7 @@ namespace MemoryManager
 			Segment* next;
 			Segment* prev;
 			uint64_t base;
-			uint64_t size
+			uint64_t size;
 		};
 		
 	private:
@@ -54,15 +54,16 @@ namespace MemoryManager
 		void* FindFree(uint64_t sizeWanted)
 		{
 			for (auto pages = head; pages != nullptr; pages = pages->next)
-				if (pages->data.size >= sizeWanted)
+				if (pages->size >= sizeWanted)
 					return pages;
 				
 			return nullptr;
 		}
 	
-		void MarkedUsed(void* segment, uint64_t sizeWanted)
+		void MarkUsed(void* segment, uint64_t sizeWanted)
 		{
-			if (pages->data.size == sizeWanted)
+			Segment* pages = (Segment*)segment;
+			if (pages->size == sizeWanted)
 			{
 				pages->prev->next = pages->next;
 
@@ -73,14 +74,14 @@ namespace MemoryManager
 				
 				size--;
 			}
-			else if (pages->data.size > sizeWanted)
+			else if (pages->size > sizeWanted)
 			{
 				Segment* newNode = (Segment*)((char*)pages + sizeWanted);
 					
 				newNode->next = pages->next;
 				newNode->prev = pages->prev;
-				newNode->data.base = pages->data.base + sizeWanted;
-				newNode->data.size = pages->data.size - sizeWanted;
+				newNode->base = pages->base + sizeWanted;
+				newNode->size = pages->size - sizeWanted;
 						
 				if(pages->prev != nullptr)
 					pages->prev->next = newNode;

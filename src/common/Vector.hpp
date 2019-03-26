@@ -18,8 +18,7 @@ private:
         {
             for(uint64_t i = 0; i < size; i++)
             {
-                new(&n[i]) T((T&&)array[i]);
-                array[i].~T();
+				n[i - 1] = (T&&)array[i];
             }
             delete[] (char*)array;
         }
@@ -54,29 +53,12 @@ public:
     {
         if(capacity != 0)
             delete[] array;
-    }
-
-    Vector(const Vector& r)
-    {
-        capacity = 0;
-        size = 0;
-        MakeCapacity(r.size);
-
-        size = r.size;
-        for(uint64_t i = 0; i < size; i++)
-            new(&array[i]) T(r.array[i]);
-    }
-	
-    Vector(Vector&& r) : capacity(r.capacity), size(r.size), array(r.array)
-    {
-        r.capacity = 0;
-		r.size = 0;
-        r.array = nullptr;
-    }
+	}
 
 	T& operator[] (uint64_t index) {
-		if (index >= capacity || index < 0)
-			return nullptr;
+		static T dead;
+		if (index >= size || index < 0)
+			return dead;
         return array[index];
     }
 
@@ -90,10 +72,10 @@ public:
 	void PushBack(const T& t)
     {
         if(capacity < size + 1) {
-            MakeCapacity(size + 10);
+            MakeCapacity(size + 1);
         }
 
-        new(&array[size]) T(t);
+		array[size] = t;
         size++;
     }
     
@@ -101,11 +83,10 @@ public:
     {
         array[it.Pos()].~T();
         for(uint64_t i = it.Pos() + 1; i < size; i++) {
-            new(&array[i - 1]) T((T&&)array[i]);
-            array[i].~T();
+			array[i - 1] = (T&&)array[i];
         }
 		size--;
     }
-}
+};
 
 #endif

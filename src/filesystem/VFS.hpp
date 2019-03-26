@@ -1,11 +1,19 @@
+#ifndef __VFS_HPP__
+#define __VFS_HPP__
+
+#include <stdint.h>
+
 namespace VFS
 {
+	class FileSystem;
+	
 	struct Node
 	{
 		enum class Type {
 			File,
             Directory,
             Device,
+			FileDescriptor,
         } type;
 
         union {
@@ -23,8 +31,8 @@ namespace VFS
 
         char name[50];
 
-        FileSystem* fs;
-        uint64_t fsNode;
+        FileSystem* fileSystem;
+        uint64_t fileSystemNode;
 
         uint64_t id;
         uint64_t numReaders;
@@ -41,9 +49,7 @@ namespace VFS
         virtual void DestroyNode	(Node& folder, Node& node) = 0;
 
         virtual uint64_t ReadFile	(const Node& node, uint64_t pos, void* buffer, uint64_t bufferSize) = 0;
-        virtual void 	 WriteFile	(Node& node      , uint64_t pos, void* buffer, uint64_t bufferSize) = 0;
-    
-        virtual void ReadDirEntries(Node& folder) = 0;
+        virtual uint64_t WriteFile	(Node& node      , uint64_t pos, void* buffer, uint64_t bufferSize) = 0;
     };
 
 	void Init();
@@ -65,5 +71,6 @@ namespace VFS
 
     Node* GetNode(uint64_t id);
     Node* GetFreeNode();
-
 }
+
+#endif

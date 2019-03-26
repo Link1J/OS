@@ -103,13 +103,13 @@ namespace MemoryManager
 
 	void* AllocatePages(uint64_t numPages)
     {
-		if (size == 0)
-			Error::Panic("Out of memory! (MemoryManager)");
+		//if (freeMemory.Size() == 0)
+			//Error::Panic("Out of memory!");
 		
 		void* mem = freeMemory.FindFree(numPages * 4096);
 		if (mem != nullptr)
 		{
-			freeMemory.MarkedUsed(mem, numPages * 4096);
+			freeMemory.MarkUsed(mem, numPages * 4096);
 			mem = KernelToPhysicalPtr(mem);
 		}
 		
@@ -128,29 +128,29 @@ namespace MemoryManager
         uint64_t pml2Index = GET_PML2_INDEX((uint64_t)virt);
         uint64_t pml1Index = GET_PML1_INDEX((uint64_t)virt);
 
-        uint64_t pml4Entry = g_PML4[pml4Index];
-        uint64_t* pml3 = (uint64_t*)PhysToKernelPtr((void*)PML_GET_ADDR(pml4Entry));
+        uint64_t pml4Entry = pageTableLevel4[pml4Index];
+        uint64_t* pml3 = (uint64_t*)PhysicalToKernelPtr((void*)PML_GET_ADDR(pml4Entry));
 
         uint64_t pml3Entry = pml3[pml3Index];
         uint64_t* pml2;
         if(!PML_GET_P(pml3Entry)) {
-            pml2 = (uint64_t*)PhysToKernelPtr(AllocatePages());
+            pml2 = (uint64_t*)PhysicalToKernelPtr(AllocatePages(1));
             for(int i = 0; i < 512; i++)
                 pml2[i] = 0;
-            pml3[pml3Index] = PML_SET_ADDR((uint64_t)KernelToPhysPtr(pml2)) | PML_SET_P(1) | PML_SET_RW(1);
+            pml3[pml3Index] = PML_SET_ADDR((uint64_t)KernelToPhysicalPtr(pml2)) | PML_SET_P(1) | PML_SET_RW(1);
         } else {
-            pml2 = (uint64_t*)PhysToKernelPtr((void*)PML_GET_ADDR(pml3Entry));
+            pml2 = (uint64_t*)PhysicalToKernelPtr((void*)PML_GET_ADDR(pml3Entry));
         }
 
         uint64_t pml2Entry = pml2[pml2Index];
         uint64_t* pml1;
         if(!PML_GET_P(pml2Entry)) {
-            pml1 = (uint64_t*)PhysToKernelPtr(AllocatePages());
+            pml1 = (uint64_t*)PhysicalToKernelPtr(AllocatePages(1));
             for(int i = 0; i < 512; i++)
                 pml1[i] = 0;
-            pml2[pml2Index] = PML_SET_ADDR((uint64_t)KernelToPhysPtr(pml1)) | PML_SET_P(1) | PML_SET_RW(1);
+            pml2[pml2Index] = PML_SET_ADDR((uint64_t)KernelToPhysicalPtr(pml1)) | PML_SET_P(1) | PML_SET_RW(1);
         } else {
-            pml1 = (uint64_t*)PhysToKernelPtr((void*)PML_GET_ADDR(pml2Entry));
+            pml1 = (uint64_t*)PhysicalToKernelPtr((void*)PML_GET_ADDR(pml2Entry));
         }
 
         pml1[pml1Index] = PML_SET_ADDR((uint64_t)phys) | PML_SET_P(1) | PML_SET_RW(1);
@@ -168,14 +168,14 @@ namespace MemoryManager
         uint64_t pml2Index = GET_PML2_INDEX((uint64_t)virt);
         uint64_t pml1Index = GET_PML1_INDEX((uint64_t)virt);
 
-        uint64_t pml4Entry = g_PML4[pml4Entry];
-        uint64_t* pml3 = (uint64_t*)PhysToKernelPtr((void*)PML_GET_ADDR(pml4Entry));
+        uint64_t pml4Entry = pageTableLevel4[pml4Index];
+        uint64_t* pml3 = (uint64_t*)PhysicalToKernelPtr((void*)PML_GET_ADDR(pml4Entry));
 
         uint64_t pml3Entry = pml3[pml3Index];
-        uint64_t* pml2 = (uint64_t*)PhysToKernelPtr((void*)PML_GET_ADDR(pml3Entry));
+        uint64_t* pml2 = (uint64_t*)PhysicalToKernelPtr((void*)PML_GET_ADDR(pml3Entry));
 
         uint64_t pml2Entry = pml2[pml2Index];
-        uint64_t* pml1 = (uint64_t*)PhysToKernelPtr((void*)PML_GET_ADDR(pml2Entry));
+        uint64_t* pml1 = (uint64_t*)PhysicalToKernelPtr((void*)PML_GET_ADDR(pml2Entry));
 
         pml1[pml1Index] = 0;
 
