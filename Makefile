@@ -8,6 +8,14 @@ COMMON_SRCS_C	= $(wildcard src/common/*.c)
 COMMON_SRCS_CPP	= $(wildcard src/common/*.cpp)
 COMMON_INCS_H	= -I src/common
 
+C++_SRCS_CRTI	= src/c++/crti.asm
+C++_SRCS_CRTN	= src/c++/crtn.asm
+C++_SRCS_CPP	= $(wildcard src/c++/*.cpp)
+C++_OBJS_COP	= $(patsubst src/%,build/%,$(patsubst %.cpp,%.o,$(C++_SRCS_CPP)))
+C++_OBJS_CRTI 	= $(patsubst src/%,build/%,$(patsubst %.asm,%.o,$(C++_SRCS_CRTI)))
+C++_OBJS_CRTN 	= $(patsubst src/%,build/%,$(patsubst %.asm,%.o,$(C++_SRCS_CRTN)))
+C++_OBJS		= $(C++_OBJS_CRTI) $(C++_OBJS_COP) $(C++_OBJS_CRTN)
+
 KERNEL_INCS_HPP	= -I src/system -I src/core -I src/memory -I src/filesystem -I src/drivers
 KERNEL_SRCS_CPP	= $(wildcard src/core/*.cpp) $(wildcard src/memory/*.cpp) $(wildcard src/system/*.cpp) $(wildcard src/filesystem/*.cpp) $(wildcard src/drivers/*.cpp)
 KERNEL_SRCS_ASM	= $(wildcard src/core/*.asm)
@@ -77,9 +85,9 @@ $(BOOTLOADER): $(BOOT_OBJS)
 	mkdir -p $(dir $@)
 	x86_64-w64-mingw32-gcc  $(BOOT_LD_FLAGS) $(BOOT_OBJS) -o $(BOOTLOADER)
 	
-$(KERNEL) : $(KERNEL_OBJS)
+$(KERNEL) : $(KERNEL_OBJS) $(C++_OBJS)
 	mkdir -p $(dir $@)
-	clang $(KERNEL_OBJS) $(KERNEL_LD_FLAGS) -o $(KERNEL)
+	clang $(C++_OBJS_CRTI) $(C++_OBJS_COP) $(KERNEL_OBJS) $(C++_OBJS_CRTN) $(KERNEL_LD_FLAGS) -o $(KERNEL)
 	
 build/boot/%.o: src/boot/%.cpp
 	mkdir -p $(dir $@)
@@ -108,7 +116,15 @@ build/memory/%.cpp.o: src/memory/%.cpp
 build/system/%.cpp.o: src/system/%.cpp
 	mkdir -p $(dir $@)
 	clang $(KERNEL_C_FLAGS) -c $< -o $@
+
+build/c++/%.o: src/c++/%.asm
+	mkdir -p $(dir $@)
+	as -g --64 $< -o $@
 	
+build/c++/%.o: src/c++/%.cpp
+	mkdir -p $(dir $@)
+	clang $(KERNEL_C_FLAGS) -c $< -o $@
+
 build/core/%.asm.o: src/core/%.asm
 	mkdir -p $(dir $@)
 	nasm -g -f elf64 $(KERNEL_AS_FLAGS) $< -o $@

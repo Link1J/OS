@@ -13,8 +13,12 @@
 
 #define TIMEZONE -4
 
+extern "C" void _init();
+
 extern "C" void __attribute__((noreturn)) _start(KernelHeader* info)
 {
+	_init();
+	
 	CMOS::RTC::UpdateBlocking();
 	Screen  ::Init(info->screenBuffer, info->screenWidth, info->screenHeight, info->screenColorsInverted);
 	Terminal::Init({0xBA,0xDA,0x55,0xFF}, {0x00,0x00,0x00,0xFF});
@@ -37,7 +41,7 @@ extern "C" void __attribute__((noreturn)) _start(KernelHeader* info)
 	
 	MemoryManager	::Init(info->physMapStart, info->pageBuffer, info->highMemoryBase	);
 	GDT				::Init((uint64_t)info->kernelImage.buffer							);
-	IDT				::Init(																);
+	IDT				::Init((uint64_t)info->kernelImage.buffer							);
 	
 	VFS::Init();
 	

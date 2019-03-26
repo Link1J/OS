@@ -61,6 +61,7 @@ namespace IDT {
 	static IDTEntry 			idt[256];
     static IDTDesc 				idtDesc;
 	static InterruptFunction	fuctions[256];
+	static uint64_t				kernelStart;
 	
 	void SetInterrupt(uint8_t number, void (*function)())
 	{
@@ -129,8 +130,19 @@ namespace IDT {
 		case 3: statusMsg = "Fault";		break;
 		}
 		
-		printf("INT %d %-29s Status Code: %-9s 0x%X, CR2: 0x%x.\n", regs->intNumber, errorMsg, statusMsg, regs->errorCode, cr2);
-
+		printf("INT %d %-29s Status Code: %-9s\n", regs->intNumber, errorMsg, statusMsg);
+		printf("RIP: %016X (%08X)\n", regs->rip, regs->rip - kernelStart);
+		
+		if (regs->intNumber == ExceptionPageFault)
+		{
+			printf("Present: %d, Write: %d, User: %d, Reserved write: %d, Instruction Fetch: %d\n",
+				(regs->errorCode >> 0) & 0b1, (regs->errorCode >> 1) & 0b1, (regs->errorCode >> 2) & 0b1, 
+				(regs->errorCode >> 3) & 0b1, (regs->errorCode >> 4) & 0b1
+				);
+			printf("Virtual Address: %016X\n", cr2);
+		}
+		
+		
 		if (status == 0)
 			asm("hlt");
     }
@@ -139,10 +151,11 @@ namespace IDT {
 	void EnableInterrupts () { asm volatile ("sti"); }
     void DisableInterrupts() { asm volatile ("cli"); }
 	
-	void Init()
+	void Init(uint64_t kernelStartIn)
 	{
 		printf("Initializing IDT\n");
 
+		kernelStart = kernelStartIn;		
 		memset(idt, 0, sizeof(idt));
 		
 		idtDesc.offset = (uint64_t)idt;
