@@ -71,7 +71,7 @@ disassemble:
 
 run:
 	rm -rf log.txt
-	qemu-system-$(ARCH).exe -cpu qemu64 -bios OVMF.fd -drive file=$(HDD_IMAGE),media=disk -m 2048M -s -d int -D log.txt
+	qemu-system-$(ARCH).exe -bios OVMF.fd -drive file=$(HDD_IMAGE),media=disk -m 2048M -s -d int -D log.txt
 
 $(BOOTLOADER): $(BOOT_OBJS)
 	mkdir -p $(dir $@)
