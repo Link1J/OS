@@ -44,7 +44,7 @@ namespace VFS
 		
 		node.type = Node::Type::FileDescriptor;
 		node.file.size = sizeof(FileDescriptor);
-		snprintf(node.name, 50, "%d", desc->id);
+		snprintf(node.name, 50, "%d", desc->id);		
 		node.fileSystemNode = desc->id;
 	}
 

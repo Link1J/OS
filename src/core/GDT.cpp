@@ -117,25 +117,21 @@ namespace GDT
         tssDesc->base4 			= ((uint64_t)&tss >> 32)	& 0xFFFFFFFF;
         tssDesc->access 		= 0b11101001;
 
-        desc = { sizeof(gdt) - 1, (uint64_t)(gdt) };
-        __asm__ __volatile__ (
-			"lgdtq	%0;"                    // tell cpu to use new GDT
-			"lea 	0x8, %%rax;"
-			"lea	flush, %%rbx;"
-			"add	%%rcx, %%rbx;"
-			"push	%%rax;"
-			"push	%%rbx;"
-			"lea 	0x10, %%rax;"             // kernel data selector
-            "mov	%%ax, %%ds;"
-            "mov	%%ax, %%es;"
-            "mov	%%ax, %%fs;"
-            "mov	%%ax, %%gs;"
-            "mov	%%ax, %%ss;"
-			"lretq;"
-			"flush:"
+        desc = { sizeof(gdt) - 1, (uint64_t)(gdt) };		
+		__asm__ __volatile__ (
+            "lgdtq (%0);"                   // tell cpu to use new GDT
+            "mov $0x10, %%rax;"             // kernel data selector
+            "mov %%ax, %%ds;"
+            "mov %%ax, %%es;"
+            "mov %%ax, %%ss;"
+            "pushq $0x08;"                  // kernel code selector
+            "leaq 1f(%%rip), %%rax;"        // rax = address of "1" label below
+            "pushq %%rax;"
+            "lretq;"                        // pops return address and cs
+            "1: nop;"
             : 
-            : "m" (desc), "c"(kernelStart)
-            : "rax", "rbx"
+            : "r" (&desc)
+            : "rax"
         );
 		
         __asm__ __volatile__ (

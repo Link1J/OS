@@ -1,11 +1,4 @@
-#include "ACPI.hpp"
-#include "MemoryUtils.hpp"
-#include "MemoryManager.hpp"
-#include "Error.hpp"
-
 #include <stdint.h>
-#include <string.h>
-#include "printf.h"
 
 namespace ACPI
 {
@@ -33,13 +26,13 @@ namespace ACPI
 		uint32_t OEMRevision;
 		uint32_t CreatorID;
 		uint32_t CreatorRevision;
-	};
+	} __attribute__ ((packed));
 	
 	struct XSDT 
 	{
 		ACPISDTHeader header;
-		uint64_t* PointerToOtherSDT;
-	};
+		uint64_t PointerToOtherSDT;
+	} __attribute__ ((packed));
 	
 	struct GenericAddressStructure
 	{
@@ -48,7 +41,7 @@ namespace ACPI
 		uint8_t BitOffset;
 		uint8_t AccessSize;
 		uint64_t Address;
-	};
+	} __attribute__ ((packed));
 	
 	struct FADT
 	{
@@ -116,21 +109,11 @@ namespace ACPI
 		GenericAddressStructure X_PMTimerBlock;
 		GenericAddressStructure X_GPE0Block;
 		GenericAddressStructure X_GPE1Block;
-	};
+	} __attribute__ ((packed));
 	
-	void Init(void* RSDPStructure)
-	{		
-		printf("Seting up APIC\n");
-		
-		RSDPDescriptor* desc = (RSDPDescriptor*)RSDPStructure;
-		
-		printf("APIC OEM: %.6s\n", desc->OEMID);
-		
-		XSDT* xsdtDesc = (XSDT*)MemoryManager::PhysicalToKernelPtr((void*)desc->XsdtAddress);
-		
-		if (memcmp(xsdtDesc->header.Signature, "XSDT", 4) != 0)
-		{
-			Error::Panic("Invalid XSDT Table");
-		}
-	}
+	struct DSDT
+	{
+		ACPISDTHeader header;
+		uint64_t data;
+	} __attribute__ ((packed));
 }

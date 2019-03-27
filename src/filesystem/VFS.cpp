@@ -11,14 +11,15 @@ namespace VFS
 {
 	class NullFileSystem : public FileSystem
 	{
+	public:
 		void Mount		(Node& mountPoint	) {}
 		void Unmount	(					) {}
 	
 		void CreateNode		(Node& folder, Node& node) {}
 		void DestroyNode	(Node& folder, Node& node) {}
 	
-		uint64_t ReadFile	(const Node& node, uint64_t pos, void* buffer, uint64_t bufferSize) {}
-		uint64_t WriteFile	(Node& node      , uint64_t pos, void* buffer, uint64_t bufferSize) {}
+		uint64_t ReadFile	(const Node& node, uint64_t pos, void* buffer, uint64_t bufferSize) { return 0; }
+		uint64_t WriteFile	(Node& node      , uint64_t pos, void* buffer, uint64_t bufferSize) { return 0; }
 		
 		void ReadDirEntries(Node& folder) {}
 	};
@@ -44,7 +45,7 @@ namespace VFS
     {
         static char nameBuffer[50] = { 0 };
 
-        uint64_t pathPos = 0;
+        uint64_t pathPos = 1;
         Node* node = GetNode(1);
 
         if(path[pathPos] == '\0')
@@ -59,7 +60,7 @@ namespace VFS
                 nameBuffer[bufferPos] = '\0';
 
                 node = FindNode(node, nameBuffer);
-                if(&node == nullptr)
+                if(node == nullptr)
                     return nullptr;
                 if(node->type != Node::Type::Directory)
                     return nullptr;
@@ -88,19 +89,23 @@ namespace VFS
 		root->fileSystem = new NullFileSystem();
         root->numReaders = 0;
         root->numWriters = 0;
-        root->fileSystem->Mount(*root);
+		root->fileSystem->Mount(*root);
         nodes.PushBack(root);
 		
 		firstFreeNode = 0;
 
 		if(!CreateFolder("/", "FileDescriptors"))
 			Error::Panic("Failed to create /FileDescriptors folder\n");
+		Mount("/FileDescriptors", new FileDescriptors());
+		
 		if(!CreateFolder("/", "Devices"))
 			Error::Panic("Failed to create /Devices folder\n");
+		
 		if(!CreateFolder("/", "System"))
 			Error::Panic("Failed to create /System folder\n");
 		
-		Mount("/FileDescriptors", new FileDescriptors());
+		if(!CreateFolder("/", "Boot"))
+			Error::Panic("Failed to create /Boot folder\n");
 		
 		printf("VFS setup completed\n");
 	}
@@ -120,8 +125,10 @@ namespace VFS
 	Node* CreateNode(const char* folder, const char* name)
 	{
 		Node* folderNode = FindPath(folder);
-        if(folderNode == nullptr || folderNode->type != Node::Type::Directory)
+        if(folderNode == nullptr)
             return nullptr;
+		if (folderNode->type != Node::Type::Directory)
+			return nullptr;
 
         Node* newNode = GetFreeNode();
 		memcpy(newNode->name, name, strlen(name) + 1);
@@ -142,7 +149,9 @@ namespace VFS
     
 	uint64_t CreateDecriptor(Node* file)
 	{
-		Node* desc = CreateNode("/FileDecriptors", "");
+		Node* desc = CreateNode("/FileDescriptors", "");
+		if(desc == nullptr)
+            return 0;
 		desc->fileSystem->WriteFile(*desc, file->id, nullptr, -2);
 		return desc->fileSystem->ReadFile(*desc, 0, nullptr, -3);
 	}
@@ -218,7 +227,7 @@ namespace VFS
 		Node* node = FindPath(file);
 		Node* folderNode = FindPath(folder);
 		
-		delete folder;
+		delete[] folder;
 		
         if(node == nullptr)
             return false;
@@ -268,7 +277,7 @@ namespace VFS
 		if(node->type == Node::Type::File)
 			return node->file.size;
 		if(node->type == Node::Type::Directory)
-			return node->file.size;
+			return node->directory.numFiles;
 		
 		return 0;
 	}
@@ -291,7 +300,7 @@ namespace VFS
 			if (pos < node->directory.numFiles)
 			{				
 				Node* file = GetNode(node->directory.files[pos]);
-				change = strlen(file->name);
+				change = strlen(file->name) + 1;
 				change = change > bufferSize ? bufferSize : change;
 				memcpy(buffer, file->name, change);
 				desc->fileSystem->WriteFile(*desc, pos + 1, nullptr, -1);

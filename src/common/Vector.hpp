@@ -18,7 +18,7 @@ private:
         {
             for(uint64_t i = 0; i < size; i++)
             {
-				n[i - 1] = (T&&)array[i];
+				n[i] = (T&&)array[i];
             }
             delete[] (char*)array;
         }

@@ -6,25 +6,23 @@
 #include "GDT.hpp"
 #include "IDT.hpp"
 #include "VFS.hpp"
-#include "ACPI.hpp"
+#include "ACPI/ACPI.hpp"
 
 #include "KernelHeader.h"
 #include "printf.h"
 
 #define TIMEZONE -4
 
-extern "C" void _init();
+#define KernelMain _start
 
-extern "C" void __attribute__((noreturn)) _start(KernelHeader* info)
+extern "C" [[noreturn]] void KernelMain(KernelHeader* info)
 {
-	_init();
-	
 	CMOS::RTC::UpdateBlocking();
 	Screen  ::Init(info->screenBuffer, info->screenWidth, info->screenHeight, info->screenColorsInverted);
 	Terminal::Init({0xBA,0xDA,0x55,0xFF}, {0x00,0x00,0x00,0xFF});
 	Screen  ::Clear({0x00,0x00,0x00,0xFF});
 	
-	printf("Kernel's Position in memory: %016X\n", info->kernelImage.buffer);
+	printf("Kernel's Position in memory: %016llX\n", info->kernelImage.buffer);
 	printf("Screen Info: %d, %d\n", Screen::Width(), Screen::Height());
 	printf("Terminal Info: %d, %d\n", Terminal::CharWidth(), Terminal::CharHeight());
 	
@@ -43,9 +41,31 @@ extern "C" void __attribute__((noreturn)) _start(KernelHeader* info)
 	GDT				::Init((uint64_t)info->kernelImage.buffer							);
 	IDT				::Init((uint64_t)info->kernelImage.buffer							);
 	
-	VFS::Init();
+	VFS	::Init(						);
+	ACPI::Init(info->RSDPStructure	);
 	
-	ACPI::Init(info->RSDPStructure);
+	char buffer[50];
+	
+	printf("FileDescriptors\n");	
+	auto file = VFS::OpenFile("/FileDescriptors");
+	if (file == 0)
+		printf("Failed to open\n");
+	
+	auto size = VFS::GetFileSize(file);
+	
+	for (int a = 0; a < size; a++)
+	{
+		VFS::ReadFile(file, buffer, 50);
+		printf("\t%s\n", buffer);
+	}
+	
+	/*
+	*(char*)(0xDEADC0DE) = 100000;
+	char a = *(char*)(0xDEADC0DE);
+	*(char*)(0xDEADBEEF) = 100000;
+	char b = *(char*)(0xDEADBEEF);
+	//*/
 	
 	Error::Panic("Reached end of main");
+	for(;;);
 }

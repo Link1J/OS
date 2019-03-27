@@ -131,15 +131,35 @@ namespace IDT {
 		}
 		
 		printf("INT %d %-29s Status Code: %-9s\n", regs->intNumber, errorMsg, statusMsg);
-		printf("RIP: %016X (%08X)\n", regs->rip, regs->rip - kernelStart);
+		printf("RIP: %016llX (%016llX)      | RSP: %016llX\n", regs->rip, regs->rip - kernelStart, regs->userrsp);
+		printf("RAX: %016llX | RCX: %016llX | RDX: %016llX\n", regs->rax, regs->rcx, regs->rdx);
+		printf("RBX: %016llX | RBP: %016llX | RSI: %016llX\n", regs->rbx, regs->rbp, regs->rsi);
+		printf("RDI: %016llX | R8 : %016llX | R9 : %016llX\n", regs->rdi, regs->r8, regs->r9);
+		printf("R10: %016llX | R11: %016llX | R12: %016llX\n", regs->r10, regs->r11, regs->r12);
+		printf("R13: %016llX | R14: %016llX | R15: %016llX\n", regs->r13, regs->r14, regs->r15);
 		
 		if (regs->intNumber == ExceptionPageFault)
 		{
-			printf("Present: %d, Write: %d, User: %d, Reserved write: %d, Instruction Fetch: %d\n",
-				(regs->errorCode >> 0) & 0b1, (regs->errorCode >> 1) & 0b1, (regs->errorCode >> 2) & 0b1, 
-				(regs->errorCode >> 3) & 0b1, (regs->errorCode >> 4) & 0b1
+			printf("%sPresent, %s, User: %d, Reserved write: %d%s\n",
+				(regs->errorCode >> 0) & 0b1
+					? ""
+					: "Not "
+				,
+				(regs->errorCode >> 1) & 0b1
+					? "Write"
+					: "Read"
+				,
+				(regs->errorCode >> 2) & 0b1
+				, 
+				(regs->errorCode >> 3) & 0b1
+				,
+				(regs->errorCode >> 4) & 0b1
+					? ", Instruction Fetch"
+					: ""
 				);
-			printf("Virtual Address: %016X\n", cr2);
+			
+			if (!((regs->errorCode >> 4) & 0b1))
+				printf("Virtual Address: %016llX\n", cr2);
 		}
 		
 		

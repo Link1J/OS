@@ -1,4 +1,5 @@
 #include <efi.h>
+#include <stddef.h>
 
 #include "efiutil.h"
 #include "conio.h"
@@ -8,6 +9,16 @@
 #include "allocator.h"
 #include "paging.h"
 #include "physicalMap.h"
+
+extern "C" void* memcpy(void* dsc, void* src, size_t n)
+{
+	for (size_t a = 0; a < n; a++)
+	{
+		((char*)dsc)[a] = ((char*)src)[a];
+	}
+	
+	return dsc;
+}
 
 extern "C" EFI_STATUS efi_main(EFI_HANDLE imgHandle, EFI_SYSTEM_TABLE* sysTable)
 {
@@ -188,10 +199,12 @@ extern "C" EFI_STATUS efi_main(EFI_HANDLE imgHandle, EFI_SYSTEM_TABLE* sysTable)
 
     __asm__ __volatile__ (
         ".intel_syntax noprefix;"
-        "movq rbp, %2;"             
-        "movq rsp, %2;"             // switch stack to kernel stack
-        "callq rax;"                // call the kernel
+        "mov rbp, rcx;"             
+        "mov rsp, rcx;"             // switch stack to kernel stack
+        "call rax;"                // call the kernel
         ".att_syntax prefix"
-        : : "D"(header), "a"(kernelMain), "r"(kernelStackTop)
+        : : "D"(header), "a"(kernelMain), "c"(kernelStackTop)
     );
+	
+	return 0;
 }

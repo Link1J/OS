@@ -1,1 +1,1 @@
-sudo apt install make nasm clang gnu-efi g++-mingw-w64-x86-64 gcc-mingw-w64-x86-64 mtools
+sudo apt install make nasm clang gnu-efi mtools
