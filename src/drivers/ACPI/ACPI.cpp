@@ -3,6 +3,7 @@
 #include "MemoryUtils.hpp"
 #include "MemoryManager.hpp"
 #include "Error.hpp"
+#include "Terminal.hpp"
 
 #include <string.h>
 #include "printf.h"
@@ -17,8 +18,6 @@ namespace ACPI
 		for (int i = 0; i < entries; i++)
 		{
 			ACPISDTHeader* header = (ACPISDTHeader*)MemoryManager::PhysicalToKernelPtr((void*)table[i]);
-			printf("%d %d %p %p %p\n",entries, i, header, table, (void*)table[i]);
-			printf("%4.4s %4.4s\n", header->Signature, tableId);			
 			if (!memcmp(header->Signature, tableId, 4))
 				return (void *)header;
 		}
@@ -26,9 +25,13 @@ namespace ACPI
 		return nullptr;
 	}	
 	
+	static void* RSDP;
+	
 	void Init(void* RSDPStructure)
 	{		
 		printf("Seting up APIC\n");
+		
+		RSDP = RSDPStructure;
 		
 		RSDPDescriptor* desc = (RSDPDescriptor*)RSDPStructure;
 		
@@ -46,10 +49,69 @@ namespace ACPI
 		DSDT* dsdt = (DSDT*)MemoryManager::PhysicalToKernelPtr((void*)fadt->X_Dsdt);
 		
 		int size = dsdt->header.Length - sizeof(dsdt->header);
+		uint8_t* data = (uint8_t*)&dsdt->data;
+		int printName = 0;
 		
-		for (int a = 0; a < 0x32; a++)
-		{
-			printf("%02hhX ",  ((char*)&dsdt->data)[a]);
-		}
+
+		/*for (uint8_t* inst = data; inst < data + size; inst++)
+		{	
+			switch (*inst)
+			{
+			case 0x5B:
+				inst++;
+				switch (*inst)
+				{
+				case 0x30:
+					printf("\nRevision: ");
+					break;
+				case 0x82:
+					printf("\nDevice: ");
+					printName++;
+					break;
+				case 0x83:
+					printf("\nProcessor: ");
+					printName++;
+					break;
+				case 0x84:
+					printf("\nPowerResource: ");
+					printName++;
+					break;
+				}				
+				break;
+			case 0x10:
+				printf("\nScope: ");
+				printName++;
+				break;
+			case 0x12:
+				printf("\nPackage: ");
+				break;
+			case 0x14:
+				printf("\nMethod: ");
+				printName++;
+				break;
+			case 0x06:
+				//printf("\nAlias: ");
+				break;
+			case 0x08:
+				printf("\nName: ");
+				printName++;
+				break;
+			case '.':
+				printName++;
+				break;
+			}
+			
+			if (printName > 0 && ((*inst >= 'A' && *inst <= 'Z') || *inst == '_'))
+			{
+				printName--;
+				for (int a = 0; a < 4; a++)
+				{
+					if ((*inst >= 'A' && *inst <= 'Z') || (*inst >= '0' && *inst <= '9') || *inst == '_')
+						Terminal::PrintChar(*inst);
+					inst++;
+				}
+				Terminal::PrintChar(' ');
+			}
+		}*/
 	}
 }

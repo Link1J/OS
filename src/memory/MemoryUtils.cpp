@@ -77,9 +77,9 @@ void operator delete[](void* block)
 // string.h functions
 
 extern "C" size_t strlen(const char *s)
-{
+{	
 	size_t size = 0;
-	while (*s++ != '\0')
+	while (*s++ != '\0' && size < 1000)
 		size++;
 	return size;
 }

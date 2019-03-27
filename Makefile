@@ -12,18 +12,20 @@ COMMON_INCS_H	= -I src/common
 #C++_SRCS_CRTN	= src/c++/crtn.asm
 C++_SRCS_CPP	= $(wildcard src/c++/*.cpp)
 C++_OBJS_COP	= $(patsubst src/%,build/%,$(patsubst %.cpp,%.o,$(C++_SRCS_CPP)))
-C++_OBJS_CRTI 	= $(patsubst src/%,build/%,$(patsubst %.asm,%.o,$(C++_SRCS_CRTI)))
-C++_OBJS_CRTN 	= $(patsubst src/%,build/%,$(patsubst %.asm,%.o,$(C++_SRCS_CRTN)))
-C++_OBJS		= $(C++_OBJS_CRTI) $(C++_OBJS_COP) $(C++_OBJS_CRTN)
+C++_OBJS		= $(C++_OBJS_COP)
+
+ACPICA_SRCS_C	= $(wildcard src/drivers/ACPI/ACPICA/components/**/*.c)
+ACPICA_OBJS		= $(patsubst src/%,build/%,$(patsubst %.c,%.c.o,$(ACPICA_SRCS_C)))
 
 KERNEL_INCS_HPP	= -I src/system -I src/core -I src/memory -I src/filesystem -I src/drivers
 KERNEL_SRCS_CPP	= $(wildcard src/core/*.cpp) $(wildcard src/memory/*.cpp) $(wildcard src/system/*.cpp) $(wildcard src/filesystem/*.cpp) $(wildcard src/drivers/**/*.cpp)
 KERNEL_SRCS_ASM	= $(wildcard src/core/*.asm)
-KERNEL_OBJS_SRC	= $(patsubst src/%,build/%,$(patsubst %.cpp,%.cpp.o,$(KERNEL_SRCS_CPP)))
+KERNEL_OBJS_SRC	= $(patsubst src/%,build/%,$(patsubst %.c,%.c.o,$(KERNEL_SRCS_C)))
+KERNEL_OBJS_SRP	= $(patsubst src/%,build/%,$(patsubst %.cpp,%.cpp.o,$(KERNEL_SRCS_CPP)))
 KERNEL_OBJS_COC	= $(patsubst src/%,build/%,$(patsubst %.c,%.c.o,$(COMMON_SRCS_C)))
 KERNEL_OBJS_COP	= $(patsubst src/%,build/%,$(patsubst %.cpp,%.cpp.o,$(COMMON_SRCS_CPP)))
 KERNEL_OBJS_ASM = $(patsubst src/%,build/%,$(patsubst %.asm,%.asm.o,$(KERNEL_SRCS_ASM)))
-KERNEL_OBJS		= $(KERNEL_OBJS_COC) $(KERNEL_OBJS_SRC) $(KERNEL_OBJS_ASM) $(KERNEL_OBJS_COP)
+KERNEL_OBJS		= $(KERNEL_OBJS_COC) $(KERNEL_OBJS_SRP) $(KERNEL_OBJS_SRC) $(KERNEL_OBJS_ASM) $(KERNEL_OBJS_COP)
 
 BOOT_SRCS_C		= $(wildcard src/boot/*.cpp)
 BOOT_OBJS		= $(patsubst src/%,build/%, $(patsubst %.cpp,%.o,$(BOOT_SRCS_C)))
@@ -45,7 +47,7 @@ CC_BOOT = clang -target x86_64-w64-mingw32
 
 build: $(BOOTLOADER) $(KERNEL)
 
-all: clean build disassemble buildHDImg run
+all: build disassemble buildHDImg run
 
 createHDImg: $(HDD_IMAGE)
 
@@ -81,16 +83,16 @@ disassemble:
 
 run:
 	rm -rf log.txt
-	qemu-system-$(ARCH).exe -bios OVMF.fd -drive file=$(HDD_IMAGE),media=disk -m 2048M -s -d int -D log.txt 
+	qemu-system-$(ARCH).exe -bios OVMF.fd -drive file=$(HDD_IMAGE),media=disk -m 2048M -s -d int -D log.txt -serial file:serial.log
 	#-S
 
 $(BOOTLOADER): $(BOOT_OBJS)
 	mkdir -p $(dir $@)
 	$(CC_BOOT) $(BOOT_LD_FLAGS) -o $@ $^
 	
-$(KERNEL) : $(KERNEL_OBJS) $(C++_OBJS)
+$(KERNEL) : $(KERNEL_OBJS) $(C++_OBJS) $(ACPICA_OBJS)
 	mkdir -p $(dir $@)
-	$(CC_KERN) $(KERNEL_LD_FLAGS) -o $(KERNEL) $(C++_OBJS_CRTI) $(C++_OBJS_COP) $(KERNEL_OBJS) $(C++_OBJS_CRTN) 
+	$(CC_KERN) $(KERNEL_LD_FLAGS) -o $(KERNEL) $(C++_OBJS_CRTI) $(C++_OBJS_COP) $(KERNEL_OBJS) $(ACPICA_OBJS) $(C++_OBJS_CRTN) 
 	
 build/boot/%.o: src/boot/%.cpp
 	mkdir -p $(dir $@)
@@ -135,7 +137,11 @@ build/core/%.asm.o: src/core/%.asm
 build/filesystem/%.cpp.o: src/filesystem/%.cpp
 	mkdir -p $(dir $@)
 	$(CC_KERN) $(KERNEL_C_FLAGS) -c $< -o $@
-	
+
 build/drivers/%.cpp.o: src/drivers/%.cpp
 	mkdir -p $(dir $@)
 	$(CC_KERN) $(KERNEL_C_FLAGS) -c $< -o $@
+
+build/drivers/ACPI/ACPICA/components/%.c.o: src/drivers/ACPI/ACPICA/components/%.c
+	mkdir -p $(dir $@)
+	$(CC_KERN) $(KERNEL_C_FLAGS) -c $< -o $@ -include src/drivers/ACPI/acenv.h -include src/drivers/ACPI/acenvex.h -isystem src/drivers/ACPI/ACPICA/include

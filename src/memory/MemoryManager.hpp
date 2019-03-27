@@ -14,4 +14,6 @@ namespace MemoryManager
 	
 	void MapKernelPage	(void* phys, void* virt	);
     void UnmapKernelPage(void* virt				);
+	
+	void* GetPhysicalFromVirtual(void* virt);
 }

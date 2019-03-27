@@ -184,4 +184,23 @@ namespace MemoryManager
             : : "r"(virt)
         );
     }
+	
+	void* GetPhysicalFromVirtual(void* virt)
+	{
+		uint64_t pml4Index = GET_PML4_INDEX((uint64_t)virt);
+        uint64_t pml3Index = GET_PML3_INDEX((uint64_t)virt);
+        uint64_t pml2Index = GET_PML2_INDEX((uint64_t)virt);
+        uint64_t pml1Index = GET_PML1_INDEX((uint64_t)virt);
+
+        uint64_t pml4Entry = pageTableLevel4[pml4Index];
+        uint64_t* pml3 = (uint64_t*)PhysicalToKernelPtr((void*)PML_GET_ADDR(pml4Entry));
+
+        uint64_t pml3Entry = pml3[pml3Index];
+        uint64_t* pml2 = (uint64_t*)PhysicalToKernelPtr((void*)PML_GET_ADDR(pml3Entry));
+
+        uint64_t pml2Entry = pml2[pml2Index];
+        uint64_t* pml1 = (uint64_t*)PhysicalToKernelPtr((void*)PML_GET_ADDR(pml2Entry));
+		
+		return (void*)PML_GET_ADDR(pml1[pml1Index]);
+	}
 }

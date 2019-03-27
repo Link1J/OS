@@ -44,7 +44,7 @@ extern "C" [[noreturn]] void KernelMain(KernelHeader* info)
 	VFS	::Init(						);
 	ACPI::Init(info->RSDPStructure	);
 	
-	char buffer[50];
+	/*char buffer[50];
 	
 	printf("FileDescriptors\n");	
 	auto file = VFS::OpenFile("/FileDescriptors");
@@ -57,7 +57,7 @@ extern "C" [[noreturn]] void KernelMain(KernelHeader* info)
 	{
 		VFS::ReadFile(file, buffer, 50);
 		printf("\t%s\n", buffer);
-	}
+	}*/
 	
 	/*
 	*(char*)(0xDEADC0DE) = 100000;
@@ -66,6 +66,6 @@ extern "C" [[noreturn]] void KernelMain(KernelHeader* info)
 	char b = *(char*)(0xDEADBEEF);
 	//*/
 	
-	Error::Panic("Reached end of main");
+	//Error::Panic("Reached end of main");
 	for(;;);
 }

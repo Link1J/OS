@@ -105,7 +105,7 @@ namespace IDT {
         case ExceptionBreakpoint:					errorMsg = "Breakpoint";					status = 3;	break;
         case ExceptionOverflow:						errorMsg = "Overflow";						status = 3;	break;
         case ExceptionBoundRangeExceeded:			errorMsg = "Bound Range exceeded";			status = 3;	break;
-        case ExceptionInvalidOpcode: 				errorMsg = "Invalid opcode";				status = 3;	break;
+        case ExceptionInvalidOpcode: 				errorMsg = "Invalid opcode";				status = 0;	break;
         case ExceptionDeviceUnavailable: 			errorMsg = "Device unavailable";			status = 3;	break;
         case ExceptionDoubleFault: 					errorMsg = "Double fault";					status = 0;	break;
         case ExceptionCoprocesssorSegmentOverrun: 	errorMsg = "Coprocessor error";				status = 3;	break;
