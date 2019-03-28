@@ -10,7 +10,7 @@
 #include "PS2Keyboard/PS2Keyboard.hpp"
 #include "PIC/PIC.hpp"
 #include "TTY/TTY.hpp"
-#include "stdio.hpp"
+#include "TTY/stdio.hpp"
 
 #include "KernelHeader.h"
 #include "printf.h"
@@ -30,14 +30,14 @@ extern "C" [[noreturn]] void KernelMain(KernelHeader* info)
 	IDT				::Init((uint64_t)info->kernelImage.buffer							);
 	VFS				::Init(																);
 
+	VFS::CreateFolder("/Devices", "tty");
 	new TTYScreen({{0xBA,0xDA,0x55,0xFF}}, {{0x00,0x00,0x00,0xFF}});
 	new PS2Keyboard();
-
 	stdio::Init();	
 	
 	printf("Kernel's Position in memory: %016llX\n", info->kernelImage.buffer);
 	printf("Screen Info: %d, %d\n", Screen::Width(), Screen::Height());
-	printf("Terminal Info: %d, %d\n", Terminal::CharWidth(), Terminal::CharHeight());
+	//printf("Terminal Info: %d, %d\n", Terminal::CharWidth(), Terminal::CharHeight());
 	
 	auto hour = CMOS::RTC::HourTimezone(TIMEZONE);
 	

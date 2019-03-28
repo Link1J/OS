@@ -1,6 +1,7 @@
 #include "KernelHeap.hpp"
 #include "MemoryList.hpp"
 #include "MemoryManager.hpp"
+#include "printf.h"
 
 namespace KernelHeap {
 
@@ -23,11 +24,13 @@ namespace KernelHeap {
 
     void* Allocate(uint64_t size)
     {
-        size = (size + sizeof(uint64_t) + 63) / 64 * 64;
+        size = (size + sizeof(uint64_t) + 62) / 64 * 64;
 
         void* mem = freeMemory.FindFree(size);
         if(mem == nullptr)
             mem = ReserveNew(size);
+        if (((uint64_t)mem + size) / 4096 > (uint64_t)mem / 4096)
+            ReserveNew(size);
         freeMemory.MarkUsed(mem, size);
 
         *(uint64_t*)mem = size;

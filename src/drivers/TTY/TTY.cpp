@@ -18,7 +18,7 @@ uint64_t TTY::Read(uint64_t pos, void* buffer, uint64_t bufferSize)
 
 void TTYScreen::PrintChar(char c)
 {	 
-	if ((c >= ' ' && c <= 127) || c == 0)
+	if ((c >= ' ' && c <= 127))
 	{
 		PrintSymbol(c);
 	}
@@ -29,6 +29,13 @@ void TTYScreen::PrintChar(char c)
 		default  : PrintSymbol(0);	break;
 		case '\n': NewLine();		break;
 		case '\r': cursor.x = 0;	break;
+        case '\b':
+            {
+                cursor.x--;
+                PrintSymbol(' ');
+                cursor.x--;
+                break;
+            }
 		case '\t': 
 			{
 				int add = cursor.x % 4;
@@ -96,7 +103,22 @@ TTYScreen::TTYScreen(Color foregound, Color backgound) : TTY("screen")
 
 void TTYScreen::Write(uint64_t pos, void* buffer, uint64_t bufferSize)
 {
-    for (int a = 0; a < bufferSize; a++)
-        Terminal::PrintChar(((char*)buffer)[0]);
+	if (*(char*)buffer == 0)
+    {
+        uint8_t command = *((char*)buffer + 1);
+
+        if (command == 0)
+        {
+			Screen::Clear(background);
+			cursor.x = 0;
+			cursor.y = 0;
+        }
+    }
+	else
+	{
+	   	for (int a = 0; a < bufferSize; a++)
+        	PrintChar(((char*)buffer)[a]);
+	}
+	
 }
 

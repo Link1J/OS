@@ -104,7 +104,7 @@ namespace MemoryManager
 	void* AllocatePages(uint64_t numPages)
     {
 		//if (freeMemory.Size() == 0)
-			//Error::Panic("Out of memory!");
+			//segmentError::Panic("Out of memory!");
 		
 		void* mem = freeMemory.FindFree(numPages * 4096);
 		if (mem != nullptr)

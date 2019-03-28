@@ -1,3 +1,6 @@
+#ifndef __TTY_HPP__
+#define __TTY_HPP__
+
 #include "Device.hpp"
 #include "Vector2.hpp"
 #include "Screen.hpp"
@@ -25,3 +28,5 @@ public:
     TTYScreen(Color foregound, Color backgound);
     void Write(uint64_t pos, void* buffer, uint64_t bufferSize);
 };
+
+#endif

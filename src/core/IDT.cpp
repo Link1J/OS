@@ -131,12 +131,6 @@ namespace IDT {
 		}
 		
 		printf("INT %d %-29s Status Code: %-9s\n", regs->intNumber, errorMsg, statusMsg);
-		printf("RIP: %016llX (%016llX)      | RSP: %016llX\n", regs->rip, regs->rip - kernelStart, regs->userrsp);
-		printf("RAX: %016llX | RCX: %016llX | RDX: %016llX\n", regs->rax, regs->rcx, regs->rdx);
-		printf("RBX: %016llX | RBP: %016llX | RSI: %016llX\n", regs->rbx, regs->rbp, regs->rsi);
-		printf("RDI: %016llX | R8 : %016llX | R9 : %016llX\n", regs->rdi, regs->r8, regs->r9);
-		printf("R10: %016llX | R11: %016llX | R12: %016llX\n", regs->r10, regs->r11, regs->r12);
-		printf("R13: %016llX | R14: %016llX | R15: %016llX\n", regs->r13, regs->r14, regs->r15);
 		
 		if (regs->intNumber == ExceptionPageFault)
 		{
@@ -161,7 +155,25 @@ namespace IDT {
 			if (!((regs->errorCode >> 4) & 0b1))
 				printf("Virtual Address: %016llX\n", cr2);
 		}
+
+		printf("RIP: %016llX (%16llX)      | RSP: %016llX\n", regs->rip, regs->rip - kernelStart, regs->userrsp);
+		printf("RAX: %016llX | RCX: %016llX | RDX: %016llX\n", regs->rax, regs->rcx, regs->rdx);
+		printf("RBX: %016llX | RBP: %016llX | RSI: %016llX\n", regs->rbx, regs->rbp, regs->rsi);
+		printf("RDI: %016llX | R8 : %016llX | R9 : %016llX\n", regs->rdi, regs->r8, regs->r9);
+		printf("R10: %016llX | R11: %016llX | R12: %016llX\n", regs->r10, regs->r11, regs->r12);
+		printf("R13: %016llX | R14: %016llX | R15: %016llX\n", regs->r13, regs->r14, regs->r15);
+		printf("StackTrace\n");
 		
+		for (int a = 0, i = 0; i < 20; a += 1)
+		{
+			uint64_t address = *(((uint64_t*)regs->userrsp) + a);
+
+			if (address - kernelStart <= 0x15000)
+			{
+				printf("\t%2d: %5llX (%016llX)\n", i++, address - kernelStart, address);
+			}
+		}
+		printf("\n\n");
 		
 		if (status == 0)
 			asm("hlt");

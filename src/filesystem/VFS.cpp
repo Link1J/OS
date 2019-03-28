@@ -205,7 +205,7 @@ namespace VFS
 				DestroyNode(node, GetNode(node->directory.files[a]));
 			delete node->directory.files;
 		}
-		
+
 		node->fileSystem->DestroyNode(*folder, *node);
 		
 		node->numReaders = firstFreeNode;
@@ -241,10 +241,19 @@ namespace VFS
 		Node* node = FindPath(path);
         if(node == nullptr)
             return 0;
-		
         return CreateDecriptor(node);
 	}
-	
+
+	uint64_t OpenFolder(const char* path)
+	{
+		Node* node = FindPath(path);
+        if(node == nullptr)
+            return 0;
+		if(node->type != Node::Type::Directory)
+			return 0;
+        return CreateDecriptor(node);
+	}
+
 	Node* GetFileDescriptor(uint64_t file)
 	{
 		char name[50 + 18];

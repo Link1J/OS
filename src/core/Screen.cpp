@@ -19,10 +19,13 @@ namespace Screen
 		data.screenSize.y	= height;
 	}
 	
-	void SetPixel( Color color, int x, int y)
+	void SetPixel(Color color, int x, int y)
 	{
-		int index = x + y * data.screenSize.x;
+		uint64_t index = x + y * data.screenSize.x;
 		
+		if (index >= data.screenSize.x * data.screenSize.y)
+			return;
+
 		Color curr = data.screenBuffer[index];
 		
 		curr.RGBA.red	 = (curr.RGBA.red	 / 256. * (1 - color.RGBA.alpha / 256.)) * 256;
@@ -59,7 +62,7 @@ namespace Screen
 	{
 		int rowStart = row * data.screenSize.x;
 		for (int x = 0; x < data.screenSize.x; x++)
-				data.screenBuffer[rowStart + x] = color;
+			data.screenBuffer[rowStart + x] = color;
 	}
 	
 	void CopyRow(int from, int to)
@@ -68,7 +71,7 @@ namespace Screen
 		int rowStartTo   = to   * data.screenSize.x;
 		
 		for (int x = 0; x < data.screenSize.x; x++)
-				data.screenBuffer[rowStartTo + x] = data.screenBuffer[rowStartFrom + x];
+			data.screenBuffer[rowStartTo + x] = data.screenBuffer[rowStartFrom + x];
 	}
 	
 	

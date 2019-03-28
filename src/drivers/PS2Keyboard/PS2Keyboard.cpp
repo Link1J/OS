@@ -1,5 +1,7 @@
 #include "PS2Keyboard.hpp"
 #include "IO.hpp"
+#include "TTY/stdio.hpp"
+#include "VFS.hpp"
 
 #define STATUS_PORT 0x64
 #define DATA_PORT 0x60
@@ -9,18 +11,18 @@ static bool caps = false;
 
 static char scancodeSet1Table1[] =
 {
-    1, 1, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b', '\t',
-    'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n', 1, 
-    'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`', 1, '\\',
-    'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 1, 1, 1, ' ', 1
+    '\0', '\0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b', '\t',
+    'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n', '\0',
+    'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`', '\0', '\\',
+    'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', '\0', '\0', '\0', ' ', '\0'
 };
 
 static char scancodeSet1Table1Shift[] =
 {
     '\0', '\0', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '\b', '\t',
-    'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '{', '}', '\n', '\0', 
-    'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ':', '"', '~', '\0', '|',
-    'z', 'x', 'c', 'v', 'b', 'n', 'm', '<', '>', '?', '\0', '\0', '\0', ' ', '\0'
+    'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '\n', '\0', 
+    'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~', '\0', '|',
+    'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', '\0', '\0', '\0', ' ', '\0'
 };
 
 PS2Keyboard::PS2Keyboard() : Device("", "keyboard") 
@@ -37,7 +39,7 @@ uint64_t PS2Keyboard::Read(uint64_t pos, void* buffer, uint64_t bufferSize)
     {
         uint8_t bufferKeyboard = device->buffer[--device->max];
     
-        if (bufferKeyboard == 0x2B || bufferKeyboard == 0x37)
+        if (bufferKeyboard == 0x2A || bufferKeyboard == 0x36)
             shift = true;
         if (bufferKeyboard == 0xAA || bufferKeyboard == 0xB6)
             shift = false;
@@ -46,22 +48,19 @@ uint64_t PS2Keyboard::Read(uint64_t pos, void* buffer, uint64_t bufferSize)
 
         if (bufferKeyboard < 0x58)
         {
-            letter = scancodeSet1Table1[bufferKeyboard];
+            if (bufferKeyboard < sizeof(scancodeSet1Table1))
+            {
+                letter = scancodeSet1Table1[bufferKeyboard];
 
-            if ((letter >= 'a' && letter <= 'z') && (caps || shift) && (caps != shift))
-                letter += 0x20;
+                if ((letter >= 'a' && letter <= 'z') && caps)
+                    letter -= 0x20;
 
-            if (!(letter >= 'a' && letter <= 'z') && shift)
-                letter = scancodeSet1Table1Shift[bufferKeyboard];
-
-            if (letter == 0)
-                letter = 1;
+                if (shift)
+                    letter = scancodeSet1Table1Shift[bufferKeyboard];
+            }
         }        
     }
 
-    if (letter == 1)
-        letter = 0;
-        
     ((char*)buffer)[0] = letter;
     return (letter != 0) ? 1 : 0;
 }

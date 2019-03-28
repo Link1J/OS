@@ -88,7 +88,7 @@ disassemble:
 
 run:
 	rm -rf log.txt
-	$(QEMU) -bios OVMF.fd -drive file=$(HDD_IMAGE),media=disk -m 2048M -s -d int -D log.txt -serial file:serial.log
+	$(QEMU) -bios OVMF.fd -drive file=$(HDD_IMAGE),media=disk -m 2048M -s -d cpu_reset -D log.txt -serial file:serial.log
 	#-S
 
 $(BOOTLOADER): $(BOOT_OBJS)

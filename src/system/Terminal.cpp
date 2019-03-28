@@ -1,29 +1,177 @@
 #include "Terminal.hpp"
-#include "Font3x5.hpp"
-#include "FontPC.hpp"
+#include "VFS.hpp"
+#include "TTY/stdio.hpp"
 #include "printf.h"
-#include "Screen.hpp"
-#include "Vector2.hpp"
-#include "IO.hpp"
-
-namespace Font = FontPC;
-
-#define PORT 0x3f8   /* COM1 */
+#include <string.h>
+#include "MemoryUtils.hpp"
 
 namespace Terminal
 {
-	
-	
-	/*void InitSerial()
+	static uint64_t posbuffer;
+	static uint64_t pospath;
+	static uint64_t maxPath;
+	static uint64_t argCount;
+	static char args[2][50];
+	static char* buffer;
+	static char* path;
+
+	void Run()
 	{
-	   IO::Out::Byte(PORT + 1, 0x00);    // Disable all interrupts
-	   IO::Out::Byte(PORT + 3, 0x80);    // Enable DLAB (set baud rate divisor)
-	   IO::Out::Byte(PORT + 0, 0x03);    // Set divisor to 3 (lo byte) 38400 baud
-	   IO::Out::Byte(PORT + 1, 0x00);    //                  (hi byte)
-	   IO::Out::Byte(PORT + 3, 0x03);    // 8 bits, no parity, one stop bit
-	   IO::Out::Byte(PORT + 2, 0xC7);    // Enable FIFO, clear them, with 14-byte threshold
-	   IO::Out::Byte(PORT + 4, 0x0B);    // IRQs enabled, RTS/DSR set
+		auto stdio = stdio::File();
+		posbuffer = 0;
+		path = (char*)malloc(2);
+		buffer = (char*)malloc(50);
+		path[0] = '/';
+		path[1] = '\0';
+		pospath = 1;
+		maxPath = 1;
+		argCount = 0;
+		
+		while (true)
+		{
+			bool reading = true;
+
+			VFS::WriteFile(stdio, path, pospath);
+			VFS::WriteFile(stdio, (char*)"\n> ", 3);
+
+			while (reading)
+			{
+				char miniBuf;
+				int size = VFS::ReadFile(stdio, &miniBuf, 1);
+				if (size > 0 && posbuffer < 50)
+				{
+					buffer[posbuffer] = miniBuf;
+					posbuffer++;
+
+					if (miniBuf == '\b')
+					{
+						buffer[--posbuffer] = 0;
+						if (posbuffer > 0)
+						{
+							VFS::WriteFile(stdio, &miniBuf, 1);
+							buffer[--posbuffer] = 0;
+						}
+						else if (argCount > 0)
+						{
+							VFS::WriteFile(stdio, &miniBuf, 1);
+							memcpy(buffer, args[argCount-1], strlen(args[argCount-1]));
+							argCount--;
+							posbuffer = strlen(args[argCount]);
+						}
+					}
+					else
+					{
+						VFS::WriteFile(stdio, &miniBuf, 1);
+						if (miniBuf == '\n')
+						{ 
+							memcpy(args[argCount], buffer, posbuffer);
+							args[argCount][posbuffer - 1] = 0;
+							posbuffer = 0;
+							argCount++;
+							reading = false;
+						}
+						if (miniBuf == ' ')
+						{
+							memcpy(args[argCount], buffer, posbuffer);
+							args[argCount][posbuffer - 1] = 0;
+							posbuffer = 0;
+							argCount++;
+						}
+					}
+				}
+			}
+			//for (int a = 0; a < argCount; a++)
+			//{
+				//printf("%s ", args[a]);
+			//}
+			//printf("\n");
+
+			if (memcmp(args[0], "ls", 3) == 0)
+			{
+				uint64_t file = VFS::OpenFile(path);
+				if (file != 0)
+				{
+					uint64_t size = VFS::GetFileSize(file);
+
+					char name[52];
+					for (int a = 0; a < size; a++)
+					{
+						int number = VFS::ReadFile(file, name + 1, 50);
+						name[0] = ' ';
+						name[number] = '\n';
+						VFS::WriteFile(stdio, name, number + 1);
+					}
+
+					VFS::CloseFile(file);
+				}
+			}
+			else if (memcmp(args[0], "cd", 3) == 0)
+			{
+				if (argCount == 2)
+				{
+					if (memcmp(args[1], "..", 3) == 0)
+					{
+						while (path[pospath] != '/')
+						{
+							if (pospath > 0)
+								pospath--;
+						}
+						if (pospath == 0)
+							pospath++;
+						path[pospath] = 0;
+					}
+					else
+					{				
+						int size = strlen(args[1]);
+						if (pospath + size > maxPath)
+						{
+							char* temp = new char[maxPath + size + 1];
+							memcpy(temp, path, maxPath);
+							delete path;
+							path = temp;
+							maxPath = maxPath + size + 1;
+						}
+						char* temp = new char[maxPath];
+						memcpy(temp, path, pospath);
+						if (pospath > 1)
+							temp[pospath++] = '/';
+						memcpy(temp + pospath, args[1], size);
+						temp[pospath + size] = 0;
+						uint64_t file = VFS::OpenFolder(temp);
+						if (file != 0)
+						{
+							memcpy(path, temp, maxPath);
+							pospath += size;
+						}
+						else if (pospath > 1)
+						{
+							pospath--;
+						}
+						
+
+						delete temp;
+					}
+				}
+			}
+			else if (memcmp(args[0], "clear", 6) == 0)
+			{
+				char help[2];
+				memset(help, 0, 2);
+				VFS::WriteFile(stdio, help, 2);
+			}
+			else
+			{
+				char* help = new char[27 + strlen(args[0]) + 1];
+				snprintf(help, 27 + strlen(args[0]) + 1, "The command %s was not found\n", args[0]);
+				VFS::WriteFile(stdio, help, 27 + strlen(args[0]));
+			}
+			
+
+			argCount = 0;
+		}
 	}
+	
+	/*
 	
 	void Init()
 	{
@@ -34,15 +182,6 @@ namespace Terminal
 	{
 		cursor.x = x;
 		cursor.y = y;
-	}
-	
-	int is_transmit_empty() {
-		return IO::In::Byte(PORT + 5) & 0x20;
-	}
- 
-	void write_serial(char a) {
-		while (is_transmit_empty() == 0);
-		IO::Out::Byte(PORT, a);
 	}
 	
 	void Hexdump(const char* data, int size)

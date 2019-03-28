@@ -62,6 +62,7 @@ namespace VFS
     bool DeleteFile			(const char* file										);
 
     uint64_t	OpenFile	(const char* path	);
+    uint64_t    OpenFolder  (const char* path	);
     void 		CloseFile	(uint64_t file		);
     uint64_t	GetFileSize	(uint64_t file		);
 
