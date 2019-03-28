@@ -4,6 +4,7 @@
 #include "printf.h"
 #include "Error.hpp"
 #include "MemoryUtils.hpp"
+#include "Device.hpp"
 
 #include <string.h>
 
@@ -305,6 +306,12 @@ namespace VFS
 				memcpy(buffer, file->name, change);
 				desc->fileSystem->WriteFile(*desc, pos + 1, nullptr, -1);
 			}
+		}
+		else if(node->type == Node::Type::Device) 
+		{
+			Device* dev = Device::GetByID(node->device.devID);
+			change = dev->Read(pos, buffer, bufferSize);
+			desc->fileSystem->WriteFile(*desc, pos + change, nullptr, -1);
 		}
 		else
 		{

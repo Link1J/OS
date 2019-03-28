@@ -7,6 +7,8 @@
 #include "IDT.hpp"
 #include "VFS.hpp"
 #include "ACPI/ACPI.hpp"
+#include "PS2Keyboard/PS2Keyboard.hpp"
+#include "PIC/PIC.hpp"
 
 #include "KernelHeader.h"
 #include "printf.h"
@@ -41,9 +43,30 @@ extern "C" [[noreturn]] void KernelMain(KernelHeader* info)
 	GDT				::Init((uint64_t)info->kernelImage.buffer							);
 	IDT				::Init((uint64_t)info->kernelImage.buffer							);
 	
-	VFS	::Init(						);
+	VFS::Init();
+	PIC::Init();
+
+	PIC::EnableKeyboardIRQ();
+	new PS2Keyboard();
+
+	auto file = VFS::OpenFile("/Devices/keyboard");
+
+	asm("sti");
+
+	while (true)
+	{
+		char buffer[10];
+		int size = VFS::ReadFile(file, buffer, 10);
+		for (int a = 0; a < size; a++)
+		{
+			printf("%02hhX ", buffer[a]);
+		}
+		if (size > 0)
+			printf("\n");
+	}
+
 	ACPI::Init(info->RSDPStructure	);
-	
+		
 	/*char buffer[50];
 	
 	printf("FileDescriptors\n");	
@@ -67,5 +90,7 @@ extern "C" [[noreturn]] void KernelMain(KernelHeader* info)
 	//*/
 	
 	//Error::Panic("Reached end of main");
-	for(;;);
+	for(;;) {
+		asm("hlt");
+	}
 }

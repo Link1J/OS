@@ -8,8 +8,6 @@ COMMON_SRCS_C	= $(wildcard src/common/*.c)
 COMMON_SRCS_CPP	= $(wildcard src/common/*.cpp)
 COMMON_INCS_H	= -I src/common
 
-#C++_SRCS_CRTI	= src/c++/crti.asm
-#C++_SRCS_CRTN	= src/c++/crtn.asm
 C++_SRCS_CPP	= $(wildcard src/c++/*.cpp)
 C++_OBJS_COP	= $(patsubst src/%,build/%,$(patsubst %.cpp,%.o,$(C++_SRCS_CPP)))
 C++_OBJS		= $(C++_OBJS_COP)
@@ -42,6 +40,13 @@ KERNEL_LD_FLAGS	= -g -fPIC -nostdlib -shared -mfloat-abi=soft
 
 CC_KERN = clang
 CC_BOOT = clang -target x86_64-w64-mingw32
+
+QEMU = qemu-system-$(ARCH)
+
+WSLENV ?= notwsl
+ifndef WSLENV
+QEMU += .exe
+endif
 
 .PHONY: clean build run buildHDImg createHDImg disassemble
 
@@ -83,7 +88,7 @@ disassemble:
 
 run:
 	rm -rf log.txt
-	qemu-system-$(ARCH).exe -bios OVMF.fd -drive file=$(HDD_IMAGE),media=disk -m 2048M -s -d int -D log.txt -serial file:serial.log
+	$(QEMU) -bios OVMF.fd -drive file=$(HDD_IMAGE),media=disk -m 2048M -s -d int -D log.txt -serial file:serial.log
 	#-S
 
 $(BOOTLOADER): $(BOOT_OBJS)

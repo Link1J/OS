@@ -1,3 +1,6 @@
+#ifndef __IDT_HPP__
+#define __IDT_HPP__
+
 #include <stdint.h>
 
 namespace IDT
@@ -16,3 +19,5 @@ namespace IDT
 	void Init(uint64_t kernelStart);
 	void SetInterruptHandler(uint8_t interrupt, InterruptFunction function);
 }
+
+#endif
