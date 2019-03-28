@@ -1,3 +1,6 @@
+#ifndef __DEVICE_HPP__
+#define __DEVICE_HPP__
+
 #include <stdint.h>
 
 class Device
@@ -14,3 +17,5 @@ public:
 private:
     uint64_t id;
 };
+
+#endif

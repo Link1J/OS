@@ -332,9 +332,17 @@ namespace VFS
 		if(node == nullptr || node->type == Node::Type::Directory)
             return;
 		
-		uint64_t pos = desc->fileSystem->ReadFile(*desc, 0, nullptr, -1);
-		uint64_t change = node->fileSystem->WriteFile(*node, pos, buffer, bufferSize);
-		desc->fileSystem->WriteFile(*desc, pos + change, nullptr, -1);
+		if(node->type == Node::Type::Device) 
+		{
+			Device* dev = Device::GetByID(node->device.devID);
+			dev->Write(0, buffer, bufferSize);
+		}
+		else
+		{
+			uint64_t pos = desc->fileSystem->ReadFile(*desc, 0, nullptr, -1);
+			uint64_t change = node->fileSystem->WriteFile(*node, pos, buffer, bufferSize);
+			desc->fileSystem->WriteFile(*desc, pos + change, nullptr, -1);
+		}
 	}
 	
     void SeekFile(uint64_t file, uint64_t pos)

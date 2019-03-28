@@ -27,11 +27,11 @@ Device::Device(const char* path, const char* name)
     else
     {
         memcpy(buffer, "/Devices/", 10);
-        memcpy(buffer, path, size);
+        memcpy(buffer + 9, path, size);
     }
 
     if(!VFS::CreateDeviceFile(buffer, name, id))
-        printf("Failed to create device file for %s\n", name);
+        printf("Failed to create device file for %s at path %s\n", name, buffer);
     else
         printf("Created device file for %s at path %s\n", name, buffer);
 }

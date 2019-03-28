@@ -3,7 +3,9 @@
 
 namespace Terminal
 {
-	void Init(Color foregound, Color backgound);
+	void Run();
+
+	/*void Init(Color foregound, Color backgound);
 
 	void SetCursor			(int x, int y								);
 	void PrintChar			(char c										);
@@ -17,5 +19,5 @@ namespace Terminal
 	uint32_t X         ();
 	uint32_t Y         ();
 	uint32_t CharWidth ();
-	uint32_t CharHeight();
+	uint32_t CharHeight();*/
 };

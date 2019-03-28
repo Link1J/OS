@@ -9,6 +9,8 @@
 #include "ACPI/ACPI.hpp"
 #include "PS2Keyboard/PS2Keyboard.hpp"
 #include "PIC/PIC.hpp"
+#include "TTY/TTY.hpp"
+#include "stdio.hpp"
 
 #include "KernelHeader.h"
 #include "printf.h"
@@ -21,8 +23,17 @@ extern "C" [[noreturn]] void KernelMain(KernelHeader* info)
 {
 	CMOS::RTC::UpdateBlocking();
 	Screen  ::Init(info->screenBuffer, info->screenWidth, info->screenHeight, info->screenColorsInverted);
-	Terminal::Init({0xBA,0xDA,0x55,0xFF}, {0x00,0x00,0x00,0xFF});
 	Screen  ::Clear({0x00,0x00,0x00,0xFF});
+
+	MemoryManager	::Init(info->physMapStart, info->pageBuffer, info->highMemoryBase	);
+	GDT				::Init((uint64_t)info->kernelImage.buffer							);
+	IDT				::Init((uint64_t)info->kernelImage.buffer							);
+	VFS				::Init(																);
+
+	new TTYScreen({{0xBA,0xDA,0x55,0xFF}}, {{0x00,0x00,0x00,0xFF}});
+	new PS2Keyboard();
+
+	stdio::Init();	
 	
 	printf("Kernel's Position in memory: %016llX\n", info->kernelImage.buffer);
 	printf("Screen Info: %d, %d\n", Screen::Width(), Screen::Height());
@@ -39,56 +50,18 @@ extern "C" [[noreturn]] void KernelMain(KernelHeader* info)
 			CMOS::RTC::YearTimezone(TIMEZONE)
 			);
 	
-	MemoryManager	::Init(info->physMapStart, info->pageBuffer, info->highMemoryBase	);
-	GDT				::Init((uint64_t)info->kernelImage.buffer							);
-	IDT				::Init((uint64_t)info->kernelImage.buffer							);
 	
-	VFS::Init();
 	PIC::Init();
-
 	PIC::EnableKeyboardIRQ();
-	new PS2Keyboard();
-
-	auto file = VFS::OpenFile("/Devices/keyboard");
+	
+	auto file = VFS::OpenFile("/Devices/tty/stdio");
 
 	asm("sti");
 
-	while (true)
-	{
-		char buffer[10];
-		int size = VFS::ReadFile(file, buffer, 10);
-		for (int a = 0; a < size; a++)
-		{
-			printf("%02hhX ", buffer[a]);
-		}
-		if (size > 0)
-			printf("\n");
-	}
+	Terminal::Run();
 
-	ACPI::Init(info->RSDPStructure	);
-		
-	/*char buffer[50];
-	
-	printf("FileDescriptors\n");	
-	auto file = VFS::OpenFile("/FileDescriptors");
-	if (file == 0)
-		printf("Failed to open\n");
-	
-	auto size = VFS::GetFileSize(file);
-	
-	for (int a = 0; a < size; a++)
-	{
-		VFS::ReadFile(file, buffer, 50);
-		printf("\t%s\n", buffer);
-	}*/
-	
-	/*
-	*(char*)(0xDEADC0DE) = 100000;
-	char a = *(char*)(0xDEADC0DE);
-	*(char*)(0xDEADBEEF) = 100000;
-	char b = *(char*)(0xDEADBEEF);
-	//*/
-	
+	//ACPI::Init(info->RSDPStructure	);
+
 	//Error::Panic("Reached end of main");
 	for(;;) {
 		asm("hlt");
