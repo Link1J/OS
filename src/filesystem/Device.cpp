@@ -17,17 +17,26 @@ Device::Device(const char* path, const char* name)
     devices.PushBack(this);
 
     int size = strlen(path);
-    if (size != 0)
-        size++;
-    char* buffer = new char[10 + size];
-    if (strlen(path) == 0)
+    char* buffer;
+
+    if (*path != '/')
     {
-        memcpy(buffer, "/Devices", 10);
+        if (size != 0)
+            size++;
+        buffer = new char[10 + size];
+        if (strlen(path) == 0)
+        {
+            memcpy(buffer, "/Devices", 10);
+        }
+        else
+        {
+            memcpy(buffer, "/Devices/", 10);
+            memcpy(buffer + 9, path, size);
+        }
     }
     else
     {
-        memcpy(buffer, "/Devices/", 10);
-        memcpy(buffer + 9, path, size);
+        buffer = (char*)path;
     }
 
     if(!VFS::CreateDeviceFile(buffer, name, id))

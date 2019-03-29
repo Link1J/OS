@@ -57,42 +57,40 @@ namespace Terminal
 					}
 					else
 					{
-						bool flag = false;
-						if (miniBuf == '\n')
-						{ 
-							memcpy(args[argCount], buffer, posbuffer);
-							args[argCount][posbuffer] = 0;
-							posbuffer = 0;
-							argCount++;
-							reading = false;
-							flag = true;
-						}
-						if (miniBuf == ' ')
+						if (argCount < 2)
 						{
-							memcpy(args[argCount], buffer, posbuffer);
-							args[argCount][posbuffer] = 0;
-							posbuffer = 0;
-							argCount++;
-							flag = true;
-						}
-
-						if (posbuffer < 50)
-						{
-							VFS::WriteFile(stdio, &miniBuf, 1);
-							if (!flag)
+							bool flag = false;
+							if (miniBuf == '\n')
+							{ 
+								memcpy(args[argCount], buffer, posbuffer);
+								args[argCount][posbuffer] = 0;
+								posbuffer = 0;
+								argCount++;
+								reading = false;
+								flag = true;
+							}
+							if (miniBuf == ' ')
 							{
-								buffer[posbuffer] = miniBuf;
-								posbuffer++;
+								memcpy(args[argCount], buffer, posbuffer);
+								args[argCount][posbuffer] = 0;
+								posbuffer = 0;
+								argCount++;
+								flag = true;
+							}
+
+							if (posbuffer < 50)
+							{
+								VFS::WriteFile(stdio, &miniBuf, 1);
+								if (!flag)
+								{
+									buffer[posbuffer] = miniBuf;
+									posbuffer++;
+								}
 							}
 						}
 					}
 				}
 			}
-			//for (int a = 0; a < argCount; a++)
-			//{
-				//printf("%s ", args[a]);
-			//}
-			//printf("\n");
 
 			if (memcmp(args[0], "ls", 3) == 0)
 			{
@@ -139,12 +137,14 @@ namespace Terminal
 							path = temp;
 							maxPath = maxPath + size + 1;
 						}
+
 						char* temp = new char[maxPath];
 						memcpy(temp, path, pospath);
 						if (pospath > 1)
 							temp[pospath++] = '/';
 						memcpy(temp + pospath, args[1], size);
 						temp[pospath + size] = 0;
+						
 						uint64_t file = VFS::OpenFolder(temp);
 						if (file != 0)
 						{
@@ -156,6 +156,7 @@ namespace Terminal
 						{
 							pospath--;
 						}
+
 						delete temp;
 					}
 				}
