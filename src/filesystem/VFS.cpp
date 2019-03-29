@@ -207,6 +207,27 @@ namespace VFS
 		}
 
 		node->fileSystem->DestroyNode(*folder, *node);
+
+		uint64_t* temp = new uint64_t[folder->directory.numFiles];
+		int o = 0;
+		for (int a = 0; a < folder->directory.numFiles; a++)
+		{
+			if (folder->directory.files[a] == node->id)
+				o = 1;
+			else
+				temp[a - o] = folder->directory.files[a];
+		}
+		
+		uint64_t* temp2 = new uint64_t[folder->directory.numFiles - o];
+		for (int a = 0; a < folder->directory.numFiles - o; a++)
+		{
+			temp2[a] = temp[a];
+		}
+
+		delete folder->directory.files;
+		delete temp;
+		folder->directory.files = temp2;
+		folder->directory.numFiles -= o;
 		
 		node->numReaders = firstFreeNode;
 		firstFreeNode = node->id;

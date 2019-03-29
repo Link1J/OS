@@ -11,7 +11,7 @@ namespace Terminal
 	static uint64_t pospath;
 	static uint64_t maxPath;
 	static uint64_t argCount;
-	static char args[2][50];
+	static char args[2][51];
 	static char* buffer;
 	static char* path;
 
@@ -38,14 +38,10 @@ namespace Terminal
 			{
 				char miniBuf;
 				int size = VFS::ReadFile(stdio, &miniBuf, 1);
-				if (size > 0 && posbuffer < 50)
+				if (size > 0)
 				{
-					buffer[posbuffer] = miniBuf;
-					posbuffer++;
-
 					if (miniBuf == '\b')
 					{
-						buffer[--posbuffer] = 0;
 						if (posbuffer > 0)
 						{
 							VFS::WriteFile(stdio, &miniBuf, 1);
@@ -61,21 +57,33 @@ namespace Terminal
 					}
 					else
 					{
-						VFS::WriteFile(stdio, &miniBuf, 1);
+						bool flag = false;
 						if (miniBuf == '\n')
 						{ 
 							memcpy(args[argCount], buffer, posbuffer);
-							args[argCount][posbuffer - 1] = 0;
+							args[argCount][posbuffer] = 0;
 							posbuffer = 0;
 							argCount++;
 							reading = false;
+							flag = true;
 						}
 						if (miniBuf == ' ')
 						{
 							memcpy(args[argCount], buffer, posbuffer);
-							args[argCount][posbuffer - 1] = 0;
+							args[argCount][posbuffer] = 0;
 							posbuffer = 0;
 							argCount++;
+							flag = true;
+						}
+
+						if (posbuffer < 50)
+						{
+							VFS::WriteFile(stdio, &miniBuf, 1);
+							if (!flag)
+							{
+								buffer[posbuffer] = miniBuf;
+								posbuffer++;
+							}
 						}
 					}
 				}
@@ -142,13 +150,12 @@ namespace Terminal
 						{
 							memcpy(path, temp, maxPath);
 							pospath += size;
+							VFS::CloseFile(file);
 						}
 						else if (pospath > 1)
 						{
 							pospath--;
 						}
-						
-
 						delete temp;
 					}
 				}
@@ -161,79 +168,17 @@ namespace Terminal
 			}
 			else
 			{
-				char* help = new char[27 + strlen(args[0]) + 1];
-				snprintf(help, 27 + strlen(args[0]) + 1, "The command %s was not found\n", args[0]);
-				VFS::WriteFile(stdio, help, 27 + strlen(args[0]));
+				int length = strlen(args[0]);
+				if (length > 50)
+					length = 50;
+
+				char* help = new char[27 + length + 1];
+				snprintf(help, 27 + length + 1, "The command %s was not found\n", args[0]);
+				VFS::WriteFile(stdio, help, 27 + length);
 			}
 			
 
 			argCount = 0;
 		}
 	}
-	
-	/*
-	
-	void Init()
-	{
-		InitSerial();
-	}
-	
-	void SetCursor(int x, int y)
-	{
-		cursor.x = x;
-		cursor.y = y;
-	}
-	
-	void Hexdump(const char* data, int size)
-	{
-		printf("\t  %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX\n",
-			0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
-				
-		
-		for (int a = 0; a < size; a += 0x10)
-		{
-			char buffer[17];
-			snprintf(buffer, 17, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c", 
-				data[a +  0], data[a +  1], data[a +  2], data[a +  3],
-				data[a +  4], data[a +  5], data[a +  6], data[a +  7],
-				data[a +  8], data[a +  9], data[a + 10], data[a + 11],
-				data[a + 12], data[a + 13], data[a + 14], data[a + 15]
-				);
-			
-			printf("%04llX: ", a);
-			
-			printf("%02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX",
-				data[a +  0], data[a +  1], data[a +  2], data[a +  3],
-				data[a +  4], data[a +  5], data[a +  6], data[a +  7],
-				data[a +  8], data[a +  9], data[a + 10], data[a + 11],
-				data[a + 12], data[a + 13], data[a + 14], data[a + 15]
-				);
-				
-			printf("\t\t|");	
-			
-			for (int b = 0; b < 16; b++)
-				Terminal::PrintSymbol(buffer[b]);
-				
-			printf("|\n");
-		}
-	}
-	
-	void SetForegoundColor(uint8_t red, uint8_t green, uint8_t blue)
-	{
-		foreground.RGBA.red		= red	;
-		foreground.RGBA.green	= green	;
-		foreground.RGBA.blue	= blue	;
-	}
-	
-	void SetBackgoundColor(uint8_t red, uint8_t green, uint8_t blue)
-	{
-		background.RGBA.red		= red	;
-		background.RGBA.green	= green	;
-		background.RGBA.blue	= blue	;
-	}
-	
-	uint32_t X         () { return cursor   .x; }
-	uint32_t Y         () { return cursor   .y; }
-	uint32_t CharWidth () { return charCount.x; }
-	uint32_t CharHeight() { return charCount.y; }*/
 }
