@@ -7,103 +7,56 @@
 
 namespace Terminal
 {
-	struct Arg
-	{
-		char* data;
-		uint64_t max;
-		uint64_t curr;
-
-		Arg()
-		{
-			data = new char[1];
-			max = 1;
-			curr = 0;
-		}
-
-		void IncressMax(int size = 1)
-		{
-			char* temp = new char[max + size];
-			memcpy(temp, data, max);
-			delete data;
-			data = temp;
-			max += size;
-		}
-
-		void ZeroCurr()
-		{
-			curr = 0;
-		}
-
-		char& operator[](int idx)
-		{
-			return data[idx];
-		}
-	};
-
-	struct Args
-	{
-		Arg* args;
-		uint64_t max;
-		uint64_t count;
-
-		Arg& operator[](int idx)
-		{
-			args[idx];
-		}
-
-		void IncressMax(int size = 1)
-		{
-			Arg* temp = new Arg[max + size];
-			memcpy(temp, args, max);
-			delete args;
-			args = temp;
-			max += size;
-		}
-	};
-
-	static Args args;
-	static Arg path;
+	static uint64_t posbuffer;
+	static uint64_t pospath;
+	static uint64_t maxPath;
+	static uint64_t argCount;
+	static char args[2][50];
+	static char* buffer;
+	static char* path;
 
 	void Run()
 	{
 		auto stdio = stdio::File();
-		path.data = new char[2];
-		memcpy(path.data, "/", 2);
-		path.max = path.curr = 1;
-		args.args = new Arg[1];
-		args.max = 1;
-		args.count = 0;
+		posbuffer = 0;
+		path = (char*)malloc(2);
+		buffer = (char*)malloc(50);
+		path[0] = '/';
+		path[1] = '\0';
+		pospath = 1;
+		maxPath = 1;
+		argCount = 0;
 		
 		while (true)
 		{
 			bool reading = true;
 
-			VFS::WriteFile(stdio, path.data, path.curr);
+			VFS::WriteFile(stdio, path, pospath);
 			VFS::WriteFile(stdio, (char*)"\n> ", 3);
 
 			while (reading)
 			{
 				char miniBuf;
 				int size = VFS::ReadFile(stdio, &miniBuf, 1);
-				if (size > 0)
+				if (size > 0 && posbuffer < 50)
 				{
-					Arg& curr = args[args.count];
-					if (curr.curr == curr.max)
-						curr.IncressMax();
-					curr[curr.curr] = miniBuf;
-					curr.curr++;
+					buffer[posbuffer] = miniBuf;
+					posbuffer++;
 
 					if (miniBuf == '\b')
 					{
-						curr[--curr.curr] = 0;
-						if (curr.curr > 0)
+						buffer[--posbuffer] = 0;
+						if (posbuffer > 0)
 						{
 							VFS::WriteFile(stdio, &miniBuf, 1);
-							curr[--curr.curr] = 0;
+							buffer[--posbuffer] = 0;
 						}
-						else if (args.count > 0)
+						else if (argCount > 0)
 						{
-							args.count--;
+							VFS::WriteFile(stdio, &miniBuf, 1);
+							memcpy(buffer, args[argCount-1], strlen(args[argCount-1]));
+							argCount--;
+							posbuffer = strlen(args[argCount]);
 						}
 					}
 					else
@@ -111,16 +64,18 @@ namespace Terminal
 						VFS::WriteFile(stdio, &miniBuf, 1);
 						if (miniBuf == '\n')
 						{ 
-							args.count++;
-							if (args.count == args.max)
-								args.IncressMax();
+							memcpy(args[argCount], buffer, posbuffer);
+							args[argCount][posbuffer - 1] = 0;
+							posbuffer = 0;
+							argCount++;
 							reading = false;
 						}
 						if (miniBuf == ' ')
 						{
-							args.count++;
-							if (args.count == args.max)
-								args.IncressMax();
+							memcpy(args[argCount], buffer, posbuffer);
+							args[argCount][posbuffer - 1] = 0;
+							posbuffer = 0;
+							argCount++;
 						}
 					}
 				}
@@ -131,9 +86,9 @@ namespace Terminal
 			//}
 			//printf("\n");
 
-			if (memcmp(args[0].data, "ls", 3) == 0)
+			if (memcmp(args[0], "ls", 3) == 0)
 			{
-				uint64_t file = VFS::OpenFile(path.data);
+				uint64_t file = VFS::OpenFile(path);
 				if (file != 0)
 				{
 					uint64_t size = VFS::GetFileSize(file);
@@ -150,48 +105,55 @@ namespace Terminal
 					VFS::CloseFile(file);
 				}
 			}
-			else if (memcmp(args[0].data, "cd", 3) == 0)
+			else if (memcmp(args[0], "cd", 3) == 0)
 			{
-				if (args.count == 2)
+				if (argCount == 2)
 				{
-					if (memcmp(args[1].data, "..", 3) == 0)
+					if (memcmp(args[1], "..", 3) == 0)
 					{
-						while (path[path.curr] != '/')
+						while (path[pospath] != '/')
 						{
-							if (path.curr > 0)
-								path.curr--;
+							if (pospath > 0)
+								pospath--;
 						}
-						if (path.curr == 0)
-							path.curr++;
-						path[path.curr] = 0;
+						if (pospath == 0)
+							pospath++;
+						path[pospath] = 0;
 					}
 					else
 					{				
-						int size = strlen(args[1].data);
-						if (path.curr + size > path.max)
-							path.IncressMax(size + 1);
-						char* temp = new char[path.max];
-						memcpy(temp, path.data, path.curr);
-						if (path.curr > 1)
-							temp[path.curr++] = '/';
-						memcpy(temp + path.curr, args[1].data, size);
-						temp[path.curr + size] = 0;
+						int size = strlen(args[1]);
+						if (pospath + size > maxPath)
+						{
+							char* temp = new char[maxPath + size + 1];
+							memcpy(temp, path, maxPath);
+							delete path;
+							path = temp;
+							maxPath = maxPath + size + 1;
+						}
+						char* temp = new char[maxPath];
+						memcpy(temp, path, pospath);
+						if (pospath > 1)
+							temp[pospath++] = '/';
+						memcpy(temp + pospath, args[1], size);
+						temp[pospath + size] = 0;
 						uint64_t file = VFS::OpenFolder(temp);
 						if (file != 0)
 						{
-							memcpy(path.data, temp, path.max);
-							path.curr += size;
+							memcpy(path, temp, maxPath);
+							pospath += size;
 						}
-						else if (path.curr > 1)
+						else if (pospath > 1)
 						{
-							path.curr--;
+							pospath--;
 						}
+						
 
 						delete temp;
 					}
 				}
 			}
-			else if (memcmp(args[0].data, "clear", 6) == 0)
+			else if (memcmp(args[0], "clear", 6) == 0)
 			{
 				char help[2];
 				memset(help, 0, 2);
@@ -199,14 +161,13 @@ namespace Terminal
 			}
 			else
 			{
-				char* help = new char[27 + strlen(args[0].data) + 1];
-				snprintf(help, 27 + strlen(args[0].data) + 1, "The command %s was not found\n", args[0].data);
-				VFS::WriteFile(stdio, help, 27 + strlen(args[0].data));
+				char* help = new char[27 + strlen(args[0]) + 1];
+				snprintf(help, 27 + strlen(args[0]) + 1, "The command %s was not found\n", args[0]);
+				VFS::WriteFile(stdio, help, 27 + strlen(args[0]));
 			}
 			
-			for (int a = 0; a < args.count; a++)
-				args[a].ZeroCurr();
-			args.count = 0;
+
+			argCount = 0;
 		}
 	}
 	

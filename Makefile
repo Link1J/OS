@@ -45,7 +45,7 @@ QEMU = qemu-system-$(ARCH)
 
 WSLENV ?= notwsl
 ifndef WSLENV
-QEMU += .exe
+QEMU = qemu-system-$(ARCH).exe
 endif
 
 .PHONY: clean build run buildHDImg createHDImg disassemble
