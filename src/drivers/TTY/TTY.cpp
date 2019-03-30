@@ -38,9 +38,11 @@ void TTYScreen::PrintChar(char c)
             }
 		case '\t': 
 			{
-				int add = cursor.x % 4;
-				if (add == 0) add = 4;
-				cursor.x += add;
+				cursor.x += 4;
+                //PrintSymbol(' ');				
+                //PrintSymbol(' ');
+                //PrintSymbol(' ');
+                //PrintSymbol(' ');
 				break;
 			}
 		}
@@ -103,15 +105,23 @@ TTYScreen::TTYScreen(Color foregound, Color backgound) : TTY("screen")
 
 void TTYScreen::Write(uint64_t pos, void* buffer, uint64_t bufferSize)
 {
-	if (*(char*)buffer == 0)
+	if (*(char*)buffer == 0 && bufferSize > 1)
     {
         uint8_t command = *((char*)buffer + 1);
 
-        if (command == 0)
+        if (command == 0 && bufferSize > 1)
         {
 			Screen::Clear(background);
 			cursor.x = 0;
 			cursor.y = 0;
+        }
+
+		if (command == 1 && bufferSize > 5)
+        {
+			foreground.RGBA.red = *((uint8_t*)buffer + 2);
+			foreground.RGBA.green = *((uint8_t*)buffer + 3);
+			foreground.RGBA.blue = *((uint8_t*)buffer + 4);
+			foreground.RGBA.alpha = *((uint8_t*)buffer + 5);
         }
     }
 	else

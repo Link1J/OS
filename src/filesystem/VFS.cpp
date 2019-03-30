@@ -308,7 +308,9 @@ namespace VFS
 		if(node->type == Node::Type::File)
 			return node->file.size;
 		if(node->type == Node::Type::Directory)
-			return node->directory.numFiles;
+			return node->directory.numFiles * 50;
+		if(node->type == Node::Type::Device)
+			return -1;
 		
 		return 0;
 	}
@@ -328,13 +330,20 @@ namespace VFS
 		
 		if (node->type == Node::Type::Directory)
 		{
-			if (pos < node->directory.numFiles)
+			if (pos < node->directory.numFiles * 50)
 			{				
-				Node* file = GetNode(node->directory.files[pos]);
-				change = strlen(file->name) + 1;
+				Node* file = GetNode(node->directory.files[pos / 50]);
+				change = strlen(file->name) + 1 - (pos % 50);
 				change = change > bufferSize ? bufferSize : change;
-				memcpy(buffer, file->name, change);
-				desc->fileSystem->WriteFile(*desc, pos + 1, nullptr, -1);
+				memcpy(buffer, file->name + (pos % 50), change);
+				if (((char*)buffer)[change - 1] == 0)
+				{
+					desc->fileSystem->WriteFile(*desc, ((pos + change + 50) / 50) * 50, nullptr, -1);
+				}					
+				else
+				{
+					desc->fileSystem->WriteFile(*desc, pos + change, nullptr, -1);
+				}
 			}
 		}
 		else if(node->type == Node::Type::Device) 
@@ -373,6 +382,16 @@ namespace VFS
 			uint64_t change = node->fileSystem->WriteFile(*node, pos, buffer, bufferSize);
 			desc->fileSystem->WriteFile(*desc, pos + change, nullptr, -1);
 		}
+	}
+
+    Node::Type GetType(uint64_t file)
+	{
+		Node* desc = GetFileDescriptor(file);
+		Node* node = GetNodeFromFileDescriptor(desc);
+		if(node == nullptr)
+            return Node::Type::File;
+
+		return node->type;		
 	}
 	
     void SeekFile(uint64_t file, uint64_t pos)

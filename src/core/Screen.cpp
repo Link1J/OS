@@ -1,32 +1,30 @@
 #include "Screen.hpp"
 #include "Vector2.hpp"
-
-struct ScreenData
-{
-	Color*	screenBuffer;
-	Vector2	screenSize;
-	bool    invertColors;
-};
-
-static ScreenData data;
+#include "printf.h"
 
 namespace Screen
 {
+	static Color*	screenBuffer;
+	static Vector2	screenSize;
+	static bool    invertColors;
+
 	void Init(uint32_t* videoBuffer, int width, int height, bool invertColors)
 	{
-		data.screenBuffer	= (Color*)videoBuffer;
-		data.screenSize.x	= width;
-		data.screenSize.y	= height;
+		screenBuffer	= (Color*)videoBuffer;
+		screenSize.x	= width;
+		screenSize.y	= height;
 	}
 	
 	void SetPixel(Color color, int x, int y)
 	{
-		uint64_t index = x + y * data.screenSize.x;
-		
-		if (index >= data.screenSize.x * data.screenSize.y)
+		uint64_t index = x + y * screenSize.x;
+
+		if (index >= screenSize.x * screenSize.y)
+			return;
+		if ((uint64_t)screenBuffer < 0xFFFFFF0000000000)
 			return;
 
-		Color curr = data.screenBuffer[index];
+		Color curr = screenBuffer[index];
 		
 		curr.RGBA.red	 = (curr.RGBA.red	 / 256. * (1 - color.RGBA.alpha / 256.)) * 256;
 		curr.RGBA.green	 = (curr.RGBA.green	 / 256. * (1 - color.RGBA.alpha / 256.)) * 256;
@@ -40,7 +38,7 @@ namespace Screen
 		color.RGBA.green = color.RGBA.green	+ curr.RGBA.green	;
 		color.RGBA.blue	 = color.RGBA.blue	+ curr.RGBA.blue	;
 		
-		if (!data.invertColors)
+		if (!invertColors)
 		{
 			curr = color;
 			
@@ -49,32 +47,32 @@ namespace Screen
 			color.BGRA.blue		= curr.RGBA.blue	;
 		}
 		
-		data.screenBuffer[index] = color;
+		screenBuffer[index] = color;
 	}
 	
 	void Clear(Color color)
 	{
-		for (int y = 0; y < data.screenSize.y; y++)
+		for (int y = 0; y < screenSize.y; y++)
 			ClearRow(color, y);
 	}
 	
 	void ClearRow(Color color, int row)
 	{
-		int rowStart = row * data.screenSize.x;
-		for (int x = 0; x < data.screenSize.x; x++)
-			data.screenBuffer[rowStart + x] = color;
+		int rowStart = row * screenSize.x;
+		for (int x = 0; x < screenSize.x; x++)
+			screenBuffer[rowStart + x] = color;
 	}
 	
 	void CopyRow(int from, int to)
 	{
-		int rowStartFrom = from * data.screenSize.x;
-		int rowStartTo   = to   * data.screenSize.x;
+		int rowStartFrom = from * screenSize.x;
+		int rowStartTo   = to   * screenSize.x;
 		
-		for (int x = 0; x < data.screenSize.x; x++)
-			data.screenBuffer[rowStartTo + x] = data.screenBuffer[rowStartFrom + x];
+		for (int x = 0; x < screenSize.x; x++)
+			screenBuffer[rowStartTo + x] = screenBuffer[rowStartFrom + x];
 	}
 	
 	
-	int Width () { return data.screenSize.x; }
-	int Height() { return data.screenSize.y; }
+	int Width () { return screenSize.x; }
+	int Height() { return screenSize.y; }
 }

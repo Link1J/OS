@@ -65,6 +65,7 @@ namespace VFS
     uint64_t    OpenFolder  (const char* path	);
     void 		CloseFile	(uint64_t file		);
     uint64_t	GetFileSize	(uint64_t file		);
+    Node::Type	GetType 	(uint64_t file		);
 
     uint64_t	ReadFile	(uint64_t file, void* buffer, uint64_t bufferSize	);
     void 		WriteFile	(uint64_t file, void* buffer, uint64_t bufferSize	);

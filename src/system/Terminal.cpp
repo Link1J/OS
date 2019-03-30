@@ -11,16 +11,55 @@ namespace Terminal
 	static uint64_t pospath;
 	static uint64_t maxPath;
 	static uint64_t argCount;
+	static uint64_t stdio;
 	static char args[2][51];
-	static char* buffer;
+	static char* argBuffer;
 	static char* path;
+
+	static uint8_t colors[] = 
+	{
+		0xFF, 0xFF, 0xFF, 0xFF,
+		0x00, 0x00, 0xFF, 0xFF,
+		0xFF, 0x00, 0x00, 0xFF,
+
+		0xBA, 0xDA, 0x55, 0xFF,
+	};
+
+	void ReadAllByte(uint64_t file)
+	{
+		uint64_t size = VFS::GetFileSize(file);
+
+		char* buffer = new char[3];
+		int number = 0;
+		if (size > 0)
+		{
+			do
+			{
+				number = VFS::ReadFile(file, buffer, 1);
+				if (buffer[0] == 0)
+					buffer[0] = ' ';
+				if (number > 0)
+					VFS::WriteFile(stdio, buffer, 1);
+			}
+			while (number > 0);
+
+			if (buffer[0] != '\n')
+			{
+				buffer[0] = '\n';
+				VFS::WriteFile(stdio, buffer, 1);
+			}
+		}
+
+		delete[] buffer;
+		VFS::CloseFile(file);
+	}
 
 	void Run()
 	{
-		auto stdio = stdio::File();
+		stdio = stdio::File();
 		posbuffer = 0;
 		path = (char*)malloc(2);
-		buffer = (char*)malloc(50);
+		argBuffer = (char*)malloc(50);
 		path[0] = '/';
 		path[1] = '\0';
 		pospath = 1;
@@ -45,12 +84,12 @@ namespace Terminal
 						if (posbuffer > 0)
 						{
 							VFS::WriteFile(stdio, &miniBuf, 1);
-							buffer[--posbuffer] = 0;
+							argBuffer[--posbuffer] = 0;
 						}
 						else if (argCount > 0)
 						{
 							VFS::WriteFile(stdio, &miniBuf, 1);
-							memcpy(buffer, args[argCount-1], strlen(args[argCount-1]));
+							memcpy(argBuffer, args[argCount-1], strlen(args[argCount-1]));
 							argCount--;
 							posbuffer = strlen(args[argCount]);
 						}
@@ -62,7 +101,7 @@ namespace Terminal
 							bool flag = false;
 							if (miniBuf == '\n')
 							{ 
-								memcpy(args[argCount], buffer, posbuffer);
+								memcpy(args[argCount], argBuffer, posbuffer);
 								args[argCount][posbuffer] = 0;
 								posbuffer = 0;
 								argCount++;
@@ -71,7 +110,7 @@ namespace Terminal
 							}
 							if (miniBuf == ' ')
 							{
-								memcpy(args[argCount], buffer, posbuffer);
+								memcpy(args[argCount], argBuffer, posbuffer);
 								args[argCount][posbuffer] = 0;
 								posbuffer = 0;
 								argCount++;
@@ -83,7 +122,7 @@ namespace Terminal
 								VFS::WriteFile(stdio, &miniBuf, 1);
 								if (!flag)
 								{
-									buffer[posbuffer] = miniBuf;
+									argBuffer[posbuffer] = miniBuf;
 									posbuffer++;
 								}
 							}
@@ -91,7 +130,7 @@ namespace Terminal
 					}
 				}
 			}
-
+			
 			if (memcmp(args[0], "ls", 3) == 0)
 			{
 				uint64_t file = VFS::OpenFile(path);
@@ -99,15 +138,39 @@ namespace Terminal
 				{
 					uint64_t size = VFS::GetFileSize(file);
 
-					char name[52];
-					for (int a = 0; a < size; a++)
-					{
-						int number = VFS::ReadFile(file, name + 1, 50);
-						name[0] = ' ';
-						name[number] = '\n';
-						VFS::WriteFile(stdio, name, number + 1);
-					}
+					char name[54];
+					char* help = new char[200];
+					int type = 0;
 
+					for (int a = 0; a < size / 50; a++)
+					{
+						int number = VFS::ReadFile(file, name + 3, 50);
+						if (pospath > 1)
+							snprintf(help, 200, "%s/%s", path, name + 3);
+						else
+							snprintf(help, 200, "%s%s", path, name + 3);
+						uint64_t tempfile = VFS::OpenFile(help);
+						int type = (int)VFS::GetType(tempfile);
+						VFS::CloseFile(tempfile);
+
+						help[0] = 0;
+						help[1] = 1;
+						memcpy(help + 2, colors + type * 4, 4);
+						VFS::WriteFile(stdio, help, 6);
+
+						name[0] = '\t';
+						name[1] = '0' + type;
+						name[2] = ' ';
+						name[number + 2] = '\n';
+						VFS::WriteFile(stdio, name, number + 3);
+					}
+					
+					help[0] = 0;
+					help[1] = 1;
+					memcpy(help + 2, colors + 3 * 4, 4);
+					VFS::WriteFile(stdio, help, 6);
+
+					delete[] help;
 					VFS::CloseFile(file);
 				}
 			}
@@ -133,22 +196,21 @@ namespace Terminal
 						{
 							char* temp = new char[maxPath + size + 1];
 							memcpy(temp, path, maxPath);
-							delete path;
+							delete[] path;
 							path = temp;
-							maxPath = maxPath + size + 1;
+							maxPath = maxPath + size + 2;
 						}
 
 						char* temp = new char[maxPath];
 						memcpy(temp, path, pospath);
 						if (pospath > 1)
 							temp[pospath++] = '/';
-						memcpy(temp + pospath, args[1], size);
-						temp[pospath + size] = 0;
+						memcpy(temp + pospath, args[1], size + 1);
 						
 						uint64_t file = VFS::OpenFolder(temp);
 						if (file != 0)
 						{
-							memcpy(path, temp, maxPath);
+							memcpy(path, temp, maxPath + 1);
 							pospath += size;
 							VFS::CloseFile(file);
 						}
@@ -157,7 +219,36 @@ namespace Terminal
 							pospath--;
 						}
 
-						delete temp;
+						delete[] temp;
+					}
+				}
+			}
+			else if (memcmp(args[0], "read", 4) == 0)
+			{
+				if (argCount > 1)
+				{
+					for (int a = 1; a < argCount; a++)
+					{
+						uint64_t length = strlen(args[a]);
+						char* buffer = new char[pospath + length + 2];
+						if (pospath > 1)
+							snprintf(buffer, pospath + length + 2, "%s/%s", path, args[a]);
+						else
+							snprintf(buffer, pospath + length + 2, "%s%s", path, args[a]);
+						uint64_t file = VFS::OpenFile(buffer);
+						delete[] buffer;
+
+						if (file != 0)
+						{
+							ReadAllByte(file);
+						}
+						else
+						{
+							buffer = new char[18 + length];
+							length = snprintf(buffer, 18 + length, "Could not open %s.\n", args[a]);
+							VFS::WriteFile(stdio, buffer, length);
+							delete[] buffer;
+						}
 					}
 				}
 			}
@@ -176,8 +267,8 @@ namespace Terminal
 				char* help = new char[27 + length + 1];
 				snprintf(help, 27 + length + 1, "The command %s was not found\n", args[0]);
 				VFS::WriteFile(stdio, help, 27 + length);
-			}
-			
+				delete[] help;
+			}		
 
 			argCount = 0;
 		}

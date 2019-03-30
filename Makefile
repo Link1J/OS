@@ -34,7 +34,7 @@ EFI_INCS		= -I$(EFI_INC) -I$(EFI_INC)/$(ARCH) -I$(EFI_INC)/protocol
 BOOT_C_FLAGS	= $(EFI_INCS) $(COMMON_INCS_H) -ffreestanding
 BOOT_LD_FLAGS	= -nostdlib -Wl,-dll -shared -Wl,--subsystem,10 -e efi_main 
 
-KERNEL_C_FLAGS	= $(COMMON_INCS_H) $(KERNEL_INCS_HPP) -g -fPIC -ffreestanding -fno-stack-protector -fno-exceptions -mno-red-zone -fno-rtti
+KERNEL_C_FLAGS	= $(COMMON_INCS_H) $(KERNEL_INCS_HPP) -g -fPIC -ffreestanding -fno-exceptions -mno-red-zone -fno-rtti
 KERNEL_AS_FLAGS	= $(subst -I,-i,$(COMMON_INCS_H) $(KERNEL_INCS_HPP))
 KERNEL_LD_FLAGS	= -g -fPIC -nostdlib -shared -mfloat-abi=soft
 
@@ -88,7 +88,7 @@ disassemble:
 
 run:
 	rm -rf log.txt
-	$(QEMU) -bios OVMF.fd -drive file=$(HDD_IMAGE),media=disk -m 2048M -s -d cpu_reset -D log.txt -serial file:serial.log
+	$(QEMU) -bios OVMF.fd -drive file=$(HDD_IMAGE),media=disk,format=raw -m 2048M -s -d cpu_reset -D log.txt -serial file:serial.log
 	#-S
 
 $(BOOTLOADER): $(BOOT_OBJS)

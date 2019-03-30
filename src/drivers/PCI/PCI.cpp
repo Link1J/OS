@@ -2,6 +2,7 @@
 #include "IO.hpp"
 #include "VFS.hpp"
 #include "printf.h"
+#include <string.h>
 
 namespace PCI
 {
@@ -39,27 +40,60 @@ namespace PCI
         return ReadConfigByte(bus, slot, func, 0xE);
     }
 
-    PCIDevice::PCIDevice(const char* folder, const char* name, uint8_t bus, uint8_t device)
-        : Device(folder, name), bus(bus), device(device) {}
+    PCIDevice::PCIDevice(const char* folder, const char* name, uint8_t bus, uint8_t device, uint8_t function)
+        : Device(folder, name), bus(bus), device(device), function(function) {}
                 
     uint64_t PCIDevice::Read(uint64_t pos, void* buffer, uint64_t bufferSize)
     {
-        uint16_t vendorID  = GetVendorID   (bus, device, 0    );
-        uint16_t deviceID  = ReadConfigWord(bus, device, 0,  2);
-        uint8_t  classCode = ReadConfigByte(bus, device, 0, 11);
-        uint8_t  subclass  = ReadConfigByte(bus, device, 0, 10);
-        uint8_t  progIF    = ReadConfigByte(bus, device, 0,  9);
+        char tempBuffer[200];
 
-        uint64_t size = snprintf((char*)buffer, bufferSize, 
-        "Bus: %d, Device: \n\tVendor    : 0x%04X\n\tDevice    : 0x%04X\n\tClass Code: 0x%02X\n\tSubclass  : 0x%02X\n\tProg IF   : 0x%02X\n", 
-        bus, device, vendorID, deviceID, classCode, subclass, progIF);
+        uint16_t vendorID  = GetVendorID   (bus, device, function    );
+        uint16_t deviceID  = ReadConfigWord(bus, device, function,  2);
+        uint8_t  classCode = ReadConfigByte(bus, device, function, 11);
+        uint8_t  subclass  = ReadConfigByte(bus, device, function, 10);
+        uint8_t  progIF    = ReadConfigByte(bus, device, function,  9);
 
-        return size;
+        int size = snprintf(tempBuffer, 200, 
+        "Bus: %d, Device: %d, Function: %d\n\tVendor    : 0x%04X\n\tDevice    : 0x%04X\n\tClass Code: 0x%02X\n\tSubclass  : 0x%02X\n\tProg IF   : 0x%02X\n", 
+        bus, device, function, vendorID, deviceID, classCode, subclass, progIF);
+
+        memcpy(buffer, tempBuffer + pos, (size - pos < bufferSize) ? size - pos + 1 : bufferSize);
+        
+        return strlen((char*)buffer);
     }
 
     void PCIDevice::Write(uint64_t pos, void* buffer, uint64_t bufferSize)
     {
 
+    }
+
+    void CheckBus(uint8_t bus, char* folder);
+
+    void CheckFunction(uint8_t bus, uint8_t device, uint8_t function, char* folder) {
+        uint8_t baseClass;
+        uint8_t subClass;
+        uint8_t secondaryBus;
+
+        int nameSize = strlen(folder);
+        char* name = new char[nameSize + 2];
+
+        baseClass = ReadConfigByte(bus, device, function, 11);
+        subClass = ReadConfigByte(bus, device, function, 10);
+        snprintf(name, 2, "%d", function);
+        printf("%s/%s\n", folder, name);
+        if((baseClass == 0x06) && (subClass == 0x04)) 
+        {
+            VFS::CreateFolder(folder, name);
+            snprintf(name, nameSize + 2, "%s/%d", folder, function);
+
+            secondaryBus = ReadConfigByte(bus, device, function, 0x16);
+            CheckBus(secondaryBus, name);
+        }
+        else
+        {
+            new PCIDevice(folder, name, bus, device, function);
+        }
+        delete[] name;
     }
     
     void CheckDevice(uint8_t bus, uint8_t device, const char* folder) 
@@ -68,25 +102,41 @@ namespace PCI
  
         uint16_t vendorID = GetVendorID(bus, device, function);
         if(vendorID == 0xFFFF) return;        // Device doesn't exist
-        
-        char name[3];
+
+        int nameSize = strlen(folder);
+        char* name = new char[nameSize + 4];
         snprintf(name, 3, "%d", device);
-        
-        new PCIDevice(folder, name, bus, device);
+        printf("%s/%s\n", folder, name);
+        VFS::CreateFolder(folder, name);
+        snprintf(name, nameSize + 3, "%s/%d", folder, device);
+        CheckFunction(bus, device, function, name);
+        auto headerType = GetHeaderType(bus, device, function);
+        if( (headerType & 0x80) != 0) {
+         for(function = 1; function < 8; function++) {
+             if(GetVendorID(bus, device, function) != 0xFFFF) {
+                 CheckFunction(bus, device, function, name);
+             }
+         }
+     }
+
+        delete[] name;
     }
  
-    void CheckBus(uint8_t bus) 
+    void CheckBus(uint8_t bus, char* folder) 
     {
-        char name[16];
+        int nameSize = strlen(folder);
+        char* name = new char[nameSize + 6];
         snprintf(name, 4, "%d", bus);
-        VFS::CreateFolder("/System/PCI", name);
-        snprintf(name, 16, "/System/PCI/%d", bus);
+        VFS::CreateFolder(folder, name);
+        snprintf(name, nameSize + 6, "%s/%d", folder, bus);
 
         uint8_t device;
  
         for(device = 0; device < 32; device++) {
             CheckDevice(bus, device, name);
         }
+
+        delete[] name;
     }
 
     void CheckAllBuses() 
@@ -98,7 +148,7 @@ namespace PCI
         if( (headerType & 0x80) == 0) 
         {
             /* Single PCI host controller */
-            CheckBus(0);
+            CheckBus(0, "/System/PCI");
         }
         else 
         {
@@ -107,7 +157,7 @@ namespace PCI
             {
                 if(GetVendorID(0, 0, function) != 0xFFFF) break;
                 bus = function;
-                CheckBus(bus);
+                CheckBus(bus, "/System/PCI");
             }
         }
     }
