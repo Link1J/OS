@@ -19,28 +19,39 @@ Device::Device(const char* path, const char* name)
     int size = strlen(path);
     char* buffer;
 
-    if (*path != '/')
+    /*if (*path != '/')
     {
         if (size != 0)
             size++;
-        buffer = new char[10 + size];
+        buffer = new char[9 + size];
         if (strlen(path) == 0)
         {
-            memcpy(buffer, "/Devices", 10);
+            memcpy(buffer, "/System", 9);
         }
         else
         {
-            memcpy(buffer, "/Devices/", 10);
-            memcpy(buffer + 9, path, size);
+            memcpy(buffer, "/System/", 9);
+            memcpy(buffer + 8, path, size);
         }
     }
     else
-    {
+    {*/
         buffer = (char*)path;
-    }
+    //}
 
     if(!VFS::CreateDeviceFile(buffer, name, id))
         printf("Failed to create device file for %s at path %s\n", name, buffer);
     else
         printf("Created device file for %s at path %s\n", name, buffer);
+
+    /*int file = VFS::OpenFolder(buffer);
+    if (file != 0)
+    {
+        printf("%s still Good\n", buffer);
+        VFS::CloseFile(file);
+    }
+    else
+    {
+        printf("%s is not Good\n", buffer);
+    }*/
 }

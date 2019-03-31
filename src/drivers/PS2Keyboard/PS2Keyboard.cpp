@@ -25,7 +25,7 @@ static char scancodeSet1Table1Shift[] =
     'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', '\0', '\0', '\0', ' ', '\0'
 };
 
-PS2Keyboard::PS2Keyboard() : Device("", "keyboard") 
+PS2Keyboard::PS2Keyboard() : Device("/System/input", "keyboard") 
 {
     device = this;
 }

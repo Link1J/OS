@@ -8,7 +8,7 @@
 #include "FontPC.hpp"
 namespace Font = FontPC;
 
-TTY::TTY(const char* name) : Device("tty", name) 
+TTY::TTY(const char* name) : Device("/System/tty", name) 
 {
 }
 

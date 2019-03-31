@@ -42,6 +42,10 @@ CC_KERN = clang
 CC_BOOT = clang -target x86_64-w64-mingw32
 
 QEMU = qemu-system-$(ARCH)
+QEMU_DRIVE_1_SATA = -drive file=$(HDD_IMAGE),if=none,id=C -device ich9-ahci,id=ahci -device ide-drive,drive=C,bus=ahci.0
+QEMU_DRIVE_1 = -drive file=$(HDD_IMAGE),media=disk,format=raw
+QEMU_DRIVE_2 = -cdrom i:\
+
 
 WSLENV ?= notwsl
 ifndef WSLENV
@@ -88,8 +92,7 @@ disassemble:
 
 run:
 	rm -rf log.txt
-	$(QEMU) -bios OVMF.fd -drive file=$(HDD_IMAGE),media=disk,format=raw -m 2048M -s -d cpu_reset -D log.txt -serial file:serial.log
-	#-S
+	$(QEMU) -bios OVMF.fd $(QEMU_DRIVE_1) -m 2048M -s -d cpu_reset -D log.txt -serial file:serial.log
 
 $(BOOTLOADER): $(BOOT_OBJS)
 	mkdir -p $(dir $@)

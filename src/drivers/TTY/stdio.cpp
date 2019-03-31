@@ -4,7 +4,7 @@
 #include "IO.hpp"
 
 stdio::stdio(const char* input, const char* output)
-    : Device("", "stdio")
+    : Device("/System", "stdio")
 {
     inputFile = VFS::OpenFile(input);
     outputFile = VFS::OpenFile(output);
@@ -25,9 +25,11 @@ static uint64_t stdioFile = 0;
 
 void stdio::Init()
 {
-    new stdio("/Devices/keyboard", "/Devices/tty/screen");
-    stdioFile = VFS::OpenFile("/Devices/stdio");
-}
+    new stdio("/System/input/keyboard", "/System/tty/screen");
+    stdioFile = VFS::OpenFile("/System/stdio");
+    if (stdioFile == 0)
+        printf("Failed to open stdio\n");
+} 
 
 uint64_t stdio::File()
 {

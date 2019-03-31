@@ -99,9 +99,6 @@ namespace VFS
 			Error::Panic("Failed to create /FileDescriptors folder\n");
 		Mount("/FileDescriptors", new FileDescriptors());
 		
-		if(!CreateFolder("/", "Devices"))
-			Error::Panic("Failed to create /Devices folder\n");
-		
 		if(!CreateFolder("/", "System"))
 			Error::Panic("Failed to create /System folder\n");
 		

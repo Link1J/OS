@@ -2,33 +2,6 @@
 
 namespace IO
 {
-	namespace Out
-	{
-		void Byte(uint16_t port, uint8_t value)
-		{
-			asm volatile("outb %0, %1" 
-						: 
-						: "a"(value), "Nd"(port)
-						);
-		}
-		
-		void Word(uint16_t port, uint16_t value)
-		{
-			asm volatile("outw %0, %1" 
-						: 
-						: "a"(value), "Nd"(port)
-						);
-		}
-		
-		void Dword(uint16_t port, uint32_t value)
-		{
-			asm volatile("outl %0, %1" 
-						: 
-						: "a"(value), "Nd"(port)
-						);
-		}
-	}
-	
 	namespace In
 	{
 		uint8_t Byte(uint16_t port)
@@ -61,4 +34,42 @@ namespace IO
 			return value;
 		}
 	}
+
+	namespace InString
+	{
+		void Dword(uint16_t port, uintptr_t addr, uint32_t cnt)
+		{
+			asm volatile("cld; rep insl" 
+						: "=D" (addr), "=c" (cnt) 
+						: "d" (port), "0" (addr), "1" (cnt) 
+						: "memory", "cc");
+		}
+	}
+
+	namespace Out
+	{
+		void Byte(uint16_t port, uint8_t value)
+		{
+			asm volatile("outb %0, %1" 
+						: 
+						: "a"(value), "Nd"(port)
+						);
+		}
+		
+		void Word(uint16_t port, uint16_t value)
+		{
+			asm volatile("outw %0, %1" 
+						: 
+						: "a"(value), "Nd"(port)
+						);
+		}
+		
+		void Dword(uint16_t port, uint32_t value)
+		{
+			asm volatile("outl %0, %1" 
+						: 
+						: "a"(value), "Nd"(port)
+						);
+		}
+	}	
 }
