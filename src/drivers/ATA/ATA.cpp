@@ -2,7 +2,8 @@
 #include "VFS.hpp"
 #include "printf.h"
 #include "IO.hpp"
-
+#include <string.h>
+#include "MemoryUtils.hpp"
 
 /* STATUS */
 #define ATA_SR_BSY                  0x80    // Busy
@@ -146,8 +147,8 @@ void CreateATADevice(uint8_t bus, uint8_t device, uint8_t function, char* pciDev
             // (III) Polling:
             if (IDERead(channels[i], ATA_REG_STATUS) != 0) // If Status = 0, No Device.
             {
-                char name2[2];
-                snprintf(name2, 2, "%d", id);
+                char name2[5];
+                snprintf(name2, 5, "IDE%d", id);
                 new ATADevice(pciDevice, name2, &channels[i], j);
                 id++;
             }
@@ -158,10 +159,15 @@ void CreateATADevice(uint8_t bus, uint8_t device, uint8_t function, char* pciDev
 static uint8_t ide_irq_invoked = 0;
 
 ATADevice::ATADevice(char* device, char* id, IDEChannelRegisters* channel, int number)
-    : Device("/System/IDE", id), channel(channel)
+    : Device("/System/Drives", id), channel(channel)
 {
     int status = 0;
     int err = 0;
+    uint8_t* ide_buf;
+    ide_buf = new uint8_t[300];
+    memset(ide_buf, 0, 300);
+
+    //[300] = {0};
 
     while(1) 
     {
@@ -206,19 +212,87 @@ ATADevice::ATADevice(char* device, char* id, IDEChannelRegisters* channel, int n
         size   = *((uint32_t*)(ide_buf + ATA_IDENT_MAX_LBA));
  
     // (VIII) String indicates model of device (like Western Digital HDD and SONY DVD-RW...):
-    for(int k = 0; k < 40; k += 2) {
+    for(int k = 0; k < 40; k += 2) 
+    {
         model[k] = ide_buf[ATA_IDENT_MODEL + k + 1];
-        model[k + 1] = ide_buf[ATA_IDENT_MODEL + k];}
+        model[k + 1] = ide_buf[ATA_IDENT_MODEL + k];
+    }
+
     model[40] = 0; // Terminate String.
- 
-    printf("Found %s Drive %dMB - %s\n",
-        ((const char *[]){"ATA", "ATAPI"})[type],  /* Type */
-        size / 1024 / 2, model);
+    for(int k = 0; k < 39; k += 1) 
+        if (model[k] == model[k + 1] && model[k] <= 0x20)
+        {
+            model[k] = 0; // Terminate String.
+            break;
+        }
+
+    printf("%s (%s Drive) %dMB\n",
+            model, ((const char*[]){"ATA", "ATAPI"})[type], size / 1024 / 2);
+        
+        /*"Found %s Drive %dMB - %s\n",
+        ((const char *[]){"ATA", "ATAPI"})[type],
+        size / 1024 / 2, model);*/
+
+    delete[] ide_buf;
 }
 
 uint64_t ATADevice::Read(uint64_t pos, void* buffer, uint64_t bufferSize)
-{
+{ 
+    uint64_t returnValue = 0;
 
+    if (*(uint8_t*)buffer == 0 && bufferSize > 1)
+    {
+        if (*((uint8_t*)buffer + 1) == 0)
+        {
+            char tempBuffer[200];
+
+            int sizea = snprintf(tempBuffer, 200, "%s (%s Drive) %dMB\n", model, ((const char*[]){"ATA", "ATAPI"})[type], size / 1024 / 2);
+
+            sizea = (sizea - pos < bufferSize) ? sizea - pos + 1 : bufferSize;
+            memcpy(buffer, tempBuffer + pos, sizea);
+            int stringLen = strlen((char*)buffer);
+                
+            returnValue = stringLen < sizea ? stringLen : sizea;
+        }
+        else if (*((uint8_t*)buffer + 1) == 1 && bufferSize > 3)
+        {
+            *((uint32_t*)buffer) = size;
+        }
+    }
+    else
+    {
+        uint8_t* package = (uint8_t*)buffer;
+
+        uint32_t lba = pos; //*(uint32_t*)(package + 1);
+        uint8_t numsects = (bufferSize - 1) / 512;
+
+        if ((bufferSize - 1) < 512 && numsects == 0)
+        {
+            package[0] = 0x2;
+        }
+        // 2: Check if inputs are valid:
+        // ==================================
+        else if (((lba + numsects) > size) && (type == IDE_ATA))
+        {
+            package[0] = 0x2;                     // Seeking to invalid position.
+        }
+        // 3: Read in PIO Mode through Polling & IRQs:
+        // ============================================
+        else 
+        {
+            uint8_t err;
+            if (type == IDE_ATA)
+                err = ATAAccess(ATA_READ, lba, numsects, 0, (uintptr_t)(package + 1));
+            //else if (type == IDE_ATAPI)
+                //for (i = 0; i < numsects; i++)
+                    //err = ide_atapi_read(drive, lba + i, 1, es, edi + (i*2048));
+            package[0] = PrintError(err);
+
+            returnValue = bufferSize - 1;
+        }
+    }
+
+    return returnValue;
 }
 
 void ATADevice::Write(uint64_t pos, void* buffer, uint64_t bufferSize)
@@ -336,5 +410,134 @@ uint8_t ATADevice::PrintError(uint8_t err)
         ((const char *[]){"Primary", "Secondary"})[channel->channel], // Use the channel as an index into the array
         ((const char *[]){"Master", "Slave"})[drive], // Same as above, using the drive
         model);
+
     return err;
+}
+
+uint8_t ATADevice::ATAAccess(uint8_t direction, uint32_t lba, uint8_t numsects, uint16_t selector, uintptr_t edi) 
+{
+    uint8_t  lba_mode /* 0: CHS, 1:LBA28, 2: LBA48 */, dma /* 0: No DMA, 1: DMA */, cmd;
+    uint8_t  lba_io[6];
+    uint32_t slavebit  = drive; // Read the Drive [Master/Slave]
+    uint32_t bus = channel->base; // Bus Base, like 0x1F0 which is also data port.
+    uint32_t words      = 256; // Almost every ATA drive has a sector-size of 512-byte.
+    uint16_t cyl, i;
+    uint8_t  head, sect, err;
+
+    IDEWrite(*channel, ATA_REG_CONTROL, channel->nIEN = (ide_irq_invoked = 0x0) + 0x02);
+
+    // (I) Select one from LBA28, LBA48 or CHS;
+    if (lba >= 0x10000000) { // Sure Drive should support LBA in this case, or you are
+                             // giving a wrong LBA.
+        // LBA48:
+        lba_mode  = 2;
+        lba_io[0] = (lba & 0x000000FF) >> 0;
+        lba_io[1] = (lba & 0x0000FF00) >> 8;
+        lba_io[2] = (lba & 0x00FF0000) >> 16;
+        lba_io[3] = (lba & 0xFF000000) >> 24;
+        lba_io[4] = 0; // LBA28 is integer, so 32-bits are enough to access 2TB.
+        lba_io[5] = 0; // LBA28 is integer, so 32-bits are enough to access 2TB.
+        head      = 0; // Lower 4-bits of HDDEVSEL are not used here.
+    } else if (capabilities & 0x200)  { // Drive supports LBA?
+        // LBA28:
+        lba_mode  = 1;
+        lba_io[0] = (lba & 0x00000FF) >> 0;
+        lba_io[1] = (lba & 0x000FF00) >> 8;
+        lba_io[2] = (lba & 0x0FF0000) >> 16;
+        lba_io[3] = 0; // These Registers are not used here.
+        lba_io[4] = 0; // These Registers are not used here.
+        lba_io[5] = 0; // These Registers are not used here.
+        head      = (lba & 0xF000000) >> 24;
+    } else {
+        // CHS:
+        lba_mode  = 0;
+        sect      = (lba % 63) + 1;
+        cyl       = (lba + 1  - sect) / (16 * 63);
+        lba_io[0] = sect;
+        lba_io[1] = (cyl >> 0) & 0xFF;
+        lba_io[2] = (cyl >> 8) & 0xFF;
+        lba_io[3] = 0;
+        lba_io[4] = 0;
+        lba_io[5] = 0;
+        head      = (lba + 1  - sect) % (16 * 63) / (63); // Head number is written to HDDEVSEL lower 4-bits.
+    }
+
+    // (II) See if drive supports DMA or not;
+    dma = 0; // We don't support DMA
+
+    // (III) Wait if the drive is busy;
+    while (IDERead(*channel, ATA_REG_STATUS) & ATA_SR_BSY); // Wait if busy.
+
+    // (IV) Select Drive from the controller;
+    if (lba_mode == 0)
+        IDEWrite(*channel, ATA_REG_HDDEVSEL, 0xA0 | (slavebit << 4) | head); // Drive & CHS.
+    else
+        IDEWrite(*channel, ATA_REG_HDDEVSEL, 0xE0 | (slavebit << 4) | head); // Drive & LBA
+
+    // (V) Write Parameters;
+    if (lba_mode == 2) {
+        IDEWrite(*channel, ATA_REG_SECCOUNT1,   0);
+        IDEWrite(*channel, ATA_REG_LBA3,   lba_io[3]);
+        IDEWrite(*channel, ATA_REG_LBA4,   lba_io[4]);
+        IDEWrite(*channel, ATA_REG_LBA5,   lba_io[5]);
+    }
+    IDEWrite(*channel, ATA_REG_SECCOUNT0,   numsects);
+    IDEWrite(*channel, ATA_REG_LBA0,   lba_io[0]);
+    IDEWrite(*channel, ATA_REG_LBA1,   lba_io[1]);
+    IDEWrite(*channel, ATA_REG_LBA2,   lba_io[2]);
+
+    if (lba_mode == 0 && dma == 0 && direction == 0) cmd = ATA_CMD_READ_PIO;
+    if (lba_mode == 1 && dma == 0 && direction == 0) cmd = ATA_CMD_READ_PIO;   
+    if (lba_mode == 2 && dma == 0 && direction == 0) cmd = ATA_CMD_READ_PIO_EXT;   
+    if (lba_mode == 0 && dma == 1 && direction == 0) cmd = ATA_CMD_READ_DMA;
+    if (lba_mode == 1 && dma == 1 && direction == 0) cmd = ATA_CMD_READ_DMA;
+    if (lba_mode == 2 && dma == 1 && direction == 0) cmd = ATA_CMD_READ_DMA_EXT;
+    if (lba_mode == 0 && dma == 0 && direction == 1) cmd = ATA_CMD_WRITE_PIO;
+    if (lba_mode == 1 && dma == 0 && direction == 1) cmd = ATA_CMD_WRITE_PIO;
+    if (lba_mode == 2 && dma == 0 && direction == 1) cmd = ATA_CMD_WRITE_PIO_EXT;
+    if (lba_mode == 0 && dma == 1 && direction == 1) cmd = ATA_CMD_WRITE_DMA;
+    if (lba_mode == 1 && dma == 1 && direction == 1) cmd = ATA_CMD_WRITE_DMA;
+    if (lba_mode == 2 && dma == 1 && direction == 1) cmd = ATA_CMD_WRITE_DMA_EXT;
+    IDEWrite(*channel, ATA_REG_COMMAND, cmd);               // Send the Command.
+
+    if (dma)
+        if (direction == 0);
+            // DMA Read.
+        else;
+            // DMA Write.
+    else
+        if (direction == 0)
+        {
+            // PIO Read.
+            for (i = 0; i < numsects; i++) 
+            {
+                if (err = IDEPolling(*channel, 1))
+                    return err; // Polling, set error and exit if there is.
+                //asm("pushw %es");
+                //asm("mov %%ax, %%es" : : "a"(selector));
+                asm("rep insw" : : "c"(words), "d"(bus), "D"(edi)); // Receive Data.
+                //asm("popw %es");
+                edi += (words*2);
+            }
+        }
+        else 
+        {
+            // PIO Write.
+            for (i = 0; i < numsects; i++) 
+            {
+                IDEPolling(*channel, 0); // Polling.
+                //asm("pushw %ds");
+                //asm("mov %%ax, %%ds"::"a"(selector));
+                asm("rep outsw"::"c"(words), "d"(bus), "S"(edi)); // Send Data
+                //asm("popw %ds");
+                edi += (words*2);
+            }
+            IDEWrite(*channel, ATA_REG_COMMAND, ((uint8_t []) {
+                        ATA_CMD_CACHE_FLUSH,
+                        ATA_CMD_CACHE_FLUSH,
+                        ATA_CMD_CACHE_FLUSH_EXT})[lba_mode]);
+            IDEPolling(*channel, 0); // Polling.
+      }
+ 
+   return 0; // Easy, isn't it?
 }

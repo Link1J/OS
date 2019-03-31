@@ -31,12 +31,12 @@ class ATADevice : public Device
     uint32_t size;         // Size in Sectors.
     uint8_t  model[41];    // Model in string.
 
-    uint8_t ide_buf[2048] = {0};
+    //uint8_t ide_buf[2048] = {0};
     static uint8_t ide_irq_invoked;
     uint8_t atapi_packet[12] = {0xA8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     uint8_t PrintError(uint8_t err);
-
+    uint8_t ATAAccess(uint8_t direction, uint32_t lba, uint8_t numsects, uint16_t selector, uintptr_t edi);
 public:
     ATADevice(char* device, char* id, IDEChannelRegisters* channel, int number);
                 

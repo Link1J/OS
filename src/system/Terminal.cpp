@@ -12,7 +12,7 @@ namespace Terminal
 	static uint64_t maxPath;
 	static uint64_t argCount;
 	static uint64_t stdio;
-	static char args[2][51];
+	static char args[5][51];
 	static char* argBuffer;
 	static char* path;
 
@@ -31,15 +31,18 @@ namespace Terminal
 
 		char* buffer = new char[3];
 		int number = 0;
+
 		if (size > 0)
 		{
 			do
 			{
-				number = VFS::ReadFile(file, buffer, 1);
+				buffer[0] = 0;
+				buffer[1] = 0;
+				number = VFS::ReadFile(file, buffer, 2);
 				if (buffer[0] == 0)
 					buffer[0] = ' ';
 				if (number > 0)
-					VFS::WriteFile(stdio, buffer, 1);
+					VFS::WriteFile(stdio, buffer, 2);
 			}
 			while (number > 0);
 
@@ -50,6 +53,40 @@ namespace Terminal
 			}
 		}
 
+		delete[] buffer;
+		VFS::CloseFile(file);
+	}
+
+	void ReadDrive(uint64_t file)
+	{
+		char* buffer = new char[513];
+		char* output = new char[4];
+		int number = 0;
+
+		buffer[0] = 0;
+		buffer[1] = 1;
+		VFS::ReadFile(file, buffer, 513);
+		uint64_t size = *(uint32_t*)buffer;
+		printf("%d %d\n", *((uint32_t*)buffer), size);
+
+		if (size > 0)
+		{
+			do
+			{
+				buffer[0] = 1;
+				number = VFS::ReadFile(file, buffer, 513);
+				if (number > 0)
+					for (int a = 0; a < number; a++)
+					{
+						printf("%02hhX ", buffer[a + 1]);
+						//snprintf(output, 4, "%02hhX ", buffer[a + 1]);
+						//VFS::WriteFile(stdio, output, 3);
+					}
+			}
+			while (number > 0);
+		}
+
+		delete[] output;
 		delete[] buffer;
 		VFS::CloseFile(file);
 	}
@@ -96,7 +133,7 @@ namespace Terminal
 					}
 					else
 					{
-						if (argCount < 2)
+						if (argCount < 5)
 						{
 							bool flag = false;
 							if (miniBuf == '\n')
@@ -223,9 +260,41 @@ namespace Terminal
 					}
 				}
 			}
-			else if (memcmp(args[0], "read", 4) == 0)
+			else if (memcmp(args[0], "read", 5) == 0)
 			{
-				if (argCount > 1)
+				bool done = false;
+				if (argCount > 2 && !done)
+				{
+					if (memcmp(args[1], "drive", 6) == 0)
+					{
+						for (int a = 2; a < argCount; a++)
+						{
+							uint64_t length = strlen(args[a]);
+							char* buffer = new char[pospath + length + 2];
+							if (pospath > 1)
+								snprintf(buffer, pospath + length + 2, "%s/%s", path, args[a]);
+							else
+								snprintf(buffer, pospath + length + 2, "%s%s", path, args[a]);
+							uint64_t file = VFS::OpenFile(buffer);
+							delete[] buffer;
+
+							if (file != 0)
+							{
+								ReadDrive(file);
+							}
+							else
+							{
+								buffer = new char[18 + length];
+								length = snprintf(buffer, 18 + length, "Could not open %s.\n", args[a]);
+								VFS::WriteFile(stdio, buffer, length);
+								delete[] buffer;
+							}
+						}
+
+						done = true;
+					}
+				}
+				if (argCount > 1 && !done)
 				{
 					for (int a = 1; a < argCount; a++)
 					{

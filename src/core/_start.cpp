@@ -35,8 +35,8 @@ extern "C" [[noreturn]] void KernelMain(KernelHeader* info)
 		printf("Failed to create /System/tty\n");
 	if (!VFS::CreateFolder("/System", "input"))
 		printf("Failed to create /System/input\n");
-	if (!VFS::CreateFolder("/System", "IDE"))
-		printf("Failed to create /System/IDE\n");
+	if (!VFS::CreateFolder("/System", "Drives"))
+		printf("Failed to create /System/Drives\n");
 	new TTYScreen({{0xBA,0xDA,0x55,0xFF}}, {{0x00,0x00,0x00,0xFF}});
 	new PS2Keyboard();
 	stdio::Init();
