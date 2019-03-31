@@ -45,6 +45,8 @@ extern "C" [[noreturn]] void KernelMain(KernelHeader* info)
 	PIC::Init();
 	PIC::EnableKeyboardIRQ();
 
+	printf("Kernel's Position in memory: %016llX\n", info->kernelImage.buffer);
+
 	auto file = VFS::OpenFile("/System/stdio");
 	if (file != 0)
 	{
@@ -56,15 +58,14 @@ extern "C" [[noreturn]] void KernelMain(KernelHeader* info)
 	auto hour = CMOS::RTC::HourTimezone(TIMEZONE);
 	
 	printf("Startup Time: %2d:%02d:%02d%s %02d/%02d/%4d\n",
-			(hour % 12) != 0 ? hour : 12,
+			(hour % 12) != 0 ? hour % 12 : 12,
 			CMOS::RTC::Minute(), CMOS::RTC::Second(), 
 			(hour < 12) ? "AM" : "PM",
 			CMOS::RTC::DayTimezone(TIMEZONE), 
 			CMOS::RTC::MonthTimezone(TIMEZONE),
 			CMOS::RTC::YearTimezone(TIMEZONE)
 			);
-	
-	printf("Kernel's Position in memory: %016llX\n", info->kernelImage.buffer);
+
 	printf("Screen Info: %d, %d\n", Screen::Width(), Screen::Height());
 
 	asm("sti");
