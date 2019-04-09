@@ -88,5 +88,7 @@ extern "C" size_t strcmp(const char *s1, const char *s2)
 {
 	int s1l = strlen(s1);
 	int s2l = strlen(s2);
+	if (s1l != s2l)
+		return s1l - s2l;
 	return memcmp(s1, s2, s1l < s2l ? s1l : s2l);
 }

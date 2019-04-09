@@ -62,9 +62,11 @@ uint64 GetELFTextAddr(const uint8* image, const uint8* processImg)
     return 0;
 }
 
-bool PrepareELF(const uint8* diskImg, uint8* processImg, Elf64Addr* entryPoint)
+bool PrepareELF(const uint8* diskImg, uint8* processImg, Elf64Addr* entryPoint, Elf64Addr* debugSymbol, Elf64Addr* debugStrings)
 {
     ELFHeader* header = (ELFHeader*)diskImg;
+
+    Elf64Addr symtabAddr, strtabAddr;
 
     ElfSegmentHeader* segList = (ElfSegmentHeader*)(diskImg + header->phOffset);
     for(int s = 0; s < header->phEntryCount; s++) {
@@ -81,8 +83,6 @@ bool PrepareELF(const uint8* diskImg, uint8* processImg, Elf64Addr* entryPoint)
             for(uint64 i = segment->dataSize; i < segment->virtualSize; i++)
                 dest[i] = 0;
         } else if(segment->type == PT_DYNAMIC) {
-            Elf64Addr symtabAddr;
-
             Elf64Addr relaAddr = 0;
             Elf64XWord relaSize = 0;
             Elf64XWord relaEntrySize = sizeof(ElfRelA);
@@ -100,6 +100,9 @@ bool PrepareELF(const uint8* diskImg, uint8* processImg, Elf64Addr* entryPoint)
             while(dyn->tag != DT_NULL) {
                 if(dyn->tag == DT_SYMTAB) {
                     symtabAddr = dyn->value;
+                }
+                if(dyn->tag == DT_SYMTAB) {
+                    strtabAddr = dyn->value;
                 }
                 else if(dyn->tag == DT_JMPREL) {
                     pltrelAddr = dyn->value;
@@ -222,5 +225,6 @@ bool PrepareELF(const uint8* diskImg, uint8* processImg, Elf64Addr* entryPoint)
     }
 
     *entryPoint = (Elf64Addr)processImg + header->entryPoint;
+    *debugSymbol = (Elf64Addr)processImg + symtabAddr;
     return true;
 }

@@ -37,4 +37,6 @@ struct KernelHeader {
     uint64_t highMemoryBase;
 	
 	void* RSDPStructure;
+    uint64_t debugSymbols;
+    uint64_t debugStrings;
 };

@@ -11,6 +11,7 @@ namespace IO
 	
 	namespace InString
 	{
+		void Word (uint16_t port, uintptr_t addr, uint32_t cnt);
 		void Dword(uint16_t port, uintptr_t addr, uint32_t cnt);
 	}
 
@@ -19,6 +20,12 @@ namespace IO
 		void Byte (uint16_t port, uint8_t  value);
 		void Word (uint16_t port, uint16_t value);
 		void Dword(uint16_t port, uint32_t value);
+	}
+
+	namespace OutString
+	{
+		void Word (uint16_t port, uintptr_t addr, uint32_t cnt);
+		void Dword(uint16_t port, uintptr_t addr, uint32_t cnt);
 	}
 }
 

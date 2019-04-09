@@ -16,7 +16,7 @@ namespace IDT
 	
 	typedef void (*InterruptFunction)(Registers* regs);
 	
-	void Init(uint64_t kernelStart);
+	void Init(uint64_t kernelStart, uint64_t debugSymbols, uint64_t strtab);
 	void SetInterruptHandler(uint8_t interrupt, InterruptFunction function);
 }
 
