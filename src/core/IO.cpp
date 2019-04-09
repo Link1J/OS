@@ -37,6 +37,14 @@ namespace IO
 
 	namespace InString
 	{
+		void Word(uint16_t port, uintptr_t addr, uint32_t cnt)
+		{
+			asm volatile("cld; rep insw" 
+						: "=D" (addr), "=c" (cnt) 
+						: "d" (port), "0" (addr), "1" (cnt) 
+						: "memory", "cc");
+		}
+
 		void Dword(uint16_t port, uintptr_t addr, uint32_t cnt)
 		{
 			asm volatile("cld; rep insl" 
@@ -72,4 +80,23 @@ namespace IO
 						);
 		}
 	}	
+
+	namespace OutString
+	{
+		void Word(uint16_t port, uintptr_t addr, uint32_t cnt)
+		{
+			asm volatile("cld; rep outsw" 
+						: "=D" (addr), "=c" (cnt) 
+						: "d" (port), "0" (addr), "1" (cnt) 
+						: "memory", "cc");
+		}
+
+		void Dword(uint16_t port, uintptr_t addr, uint32_t cnt)
+		{
+			asm volatile("cld; rep outsl" 
+						: "=D" (addr), "=c" (cnt) 
+						: "d" (port), "0" (addr), "1" (cnt) 
+						: "memory", "cc");
+		}
+	}
 }

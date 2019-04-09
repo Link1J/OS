@@ -22,10 +22,12 @@
 
 extern "C" [[noreturn]] void KernelMain(KernelHeader* info)
 {
-	MemoryManager	::Init(info->physMapStart, info->pageBuffer, info->highMemoryBase	);
-	GDT				::Init((uint64_t)info->kernelImage.buffer							);
-	IDT				::Init((uint64_t)info->kernelImage.buffer							);
-	VFS				::Init(																);
+	printf("Kernel's Position in memory: %016llX\n", info->kernelImage.buffer);
+
+	MemoryManager	::Init(info->physMapStart, info->pageBuffer, info->highMemoryBase										);
+	GDT				::Init((uint64_t)info->kernelImage.buffer																);
+	IDT				::Init((uint64_t)info->kernelImage.buffer, (uint64_t)info->debugSymbols, (uint64_t)info->debugStrings	);
+	VFS				::Init(																									);
 
 	CMOS::RTC::UpdateBlocking();
 	Screen  ::Init(info->screenBuffer, info->screenWidth, info->screenHeight, info->screenColorsInverted);
@@ -44,8 +46,6 @@ extern "C" [[noreturn]] void KernelMain(KernelHeader* info)
 	PCI::Init();
 	PIC::Init();
 	PIC::EnableKeyboardIRQ();
-
-	printf("Kernel's Position in memory: %016llX\n", info->kernelImage.buffer);
 
 	auto file = VFS::OpenFile("/System/stdio");
 	if (file != 0)

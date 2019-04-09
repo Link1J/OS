@@ -134,7 +134,7 @@ extern "C" EFI_STATUS efi_main(EFI_HANDLE imgHandle, EFI_SYSTEM_TABLE* sysTable)
     uint8* processBuffer = (uint8*)Paging::ConvertPtr(Allocate(size, (EFI_MEMORY_TYPE)0x80000001));
 
     // relocate the kernel into the buffer
-    if(!PrepareELF(kernelData.data, processBuffer, &kernelEntryPoint)) {
+    if(!PrepareELF(kernelData.data, processBuffer, &kernelEntryPoint, &header->debugSymbols, &header->debugStrings)) {
         Console::Print(L"Failed to prepare kernel\r\nPress any key to exit...\r\n");
         EFIUtil::WaitForKey();
         return EFI_LOAD_ERROR;

@@ -62,6 +62,8 @@ namespace IDT {
     static IDTDesc 				idtDesc;
 	static InterruptFunction	fuctions[256];
 	static uint64_t				kernelStart;
+	static uint64_t 			debugSymbols;
+	static uint64_t 			strtab;
 	
 	void SetInterrupt(uint8_t number, void (*function)())
 	{
@@ -83,7 +85,45 @@ namespace IDT {
         else
             fuctions[regs->intNumber](regs);
     }
+
+typedef unsigned long long Elf64Addr;
+typedef unsigned long long Elf64Offs;
+typedef unsigned short Elf64Half;
+typedef unsigned int Elf64Word;
+typedef signed int Elf64SWord;
+typedef unsigned long long Elf64XWord;
+typedef signed long long Elf64SXWord;
+typedef unsigned char Elf64Byte;
+typedef unsigned short Elf64Section;
+
+	struct ElfSymbol {
+		Elf64Word symbolNameOffset;
+		Elf64Byte info;
+		Elf64Byte reserved;
+		Elf64Half sectionTableIndex;
+		Elf64Addr value;
+		Elf64XWord size;
+	};// __attribute__((packed));
 	
+	struct stackframe {
+		stackframe* ebp;
+		uint64_t eip;
+	};
+
+	void StackTrace(unsigned int MaxFrames, uint64_t start)
+	{
+		char na[] = "N/A";
+		stackframe* stk = (stackframe*)(start);
+		//asm ("movl %%ebp,%0" : "r"(stk) ::);
+		printf("Stack trace:\n");
+		for(unsigned int frame = 0; stk && frame < MaxFrames; ++frame)
+		{
+			uint64_t pos = stk->eip - kernelStart;
+			printf("\t%5llX (%016llX)\n", pos, stk->eip);
+			stk = stk->ebp;
+		}
+	}
+
 	static void Interrupt_Exceptions_Handler(Registers* regs)
     {
 		const char* errorMsg;
@@ -162,17 +202,7 @@ namespace IDT {
 		printf("RDI: %016llX | R8 : %016llX | R9 : %016llX\n", regs->rdi, regs->r8, regs->r9);
 		printf("R10: %016llX | R11: %016llX | R12: %016llX\n", regs->r10, regs->r11, regs->r12);
 		printf("R13: %016llX | R14: %016llX | R15: %016llX\n", regs->r13, regs->r14, regs->r15);
-		printf("StackTrace\n");
-		
-		for (int a = 0, i = 0; i < 20; a += 1)
-		{
-			uint64_t address = *(((uint64_t*)regs->userrsp) + a);
-
-			if (address - kernelStart <= 0x15000)
-			{
-				printf("\t%2d: %5llX (%016llX)\n", i++, address - kernelStart, address);
-			}
-		}
+		StackTrace(10, regs->rbp);
 		printf("\n\n");
 		
 		if (status == 0)
@@ -183,11 +213,13 @@ namespace IDT {
 	void EnableInterrupts () { asm volatile ("sti"); }
     void DisableInterrupts() { asm volatile ("cli"); }
 	
-	void Init(uint64_t kernelStartIn)
+	void Init(uint64_t kernelStartIn, uint64_t debugSymbolsIn, uint64_t strtabIn)
 	{
 		printf("Initializing IDT\n");
 
-		kernelStart = kernelStartIn;		
+		kernelStart = kernelStartIn;
+		debugSymbols = debugSymbolsIn;
+		strtab = strtabIn;
 		memset(idt, 0, sizeof(idt));
 		
 		idtDesc.offset = (uint64_t)idt;

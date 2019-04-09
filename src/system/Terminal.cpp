@@ -63,7 +63,7 @@ namespace Terminal
 		char* output = new char[4];
 		int number = 0;
 
-		buffer[0] = 0;
+		buffer[0] = 0xFF;
 		buffer[1] = 1;
 		VFS::ReadFile(file, buffer, 513);
 		uint64_t size = *(uint32_t*)buffer;
@@ -73,12 +73,12 @@ namespace Terminal
 		{
 			do
 			{
-				buffer[0] = 1;
+				buffer[0] = 0;
 				number = VFS::ReadFile(file, buffer, 513);
 				if (number > 0)
 					for (int a = 0; a < number; a++)
 					{
-						printf("%02hhX ", buffer[a + 1]);
+						//printf("%02hhX ", buffer[a + 1]);
 						//snprintf(output, 4, "%02hhX ", buffer[a + 1]);
 						//VFS::WriteFile(stdio, output, 3);
 					}

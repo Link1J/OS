@@ -56,7 +56,7 @@ endif
 
 build: $(BOOTLOADER) $(KERNEL)
 
-all: build disassemble buildHDImg run
+all: clean build disassemble buildHDImg run
 
 createHDImg: $(HDD_IMAGE)
 
@@ -75,7 +75,7 @@ buildHDImg: $(BOOTLOADER) $(KERNEL) $(HDD_IMAGE)
 	
 	cp $(BOOTLOADER) build/bootx64.efi
 	cp $(KERNEL) build/kernel.elf
-	strip build/kernel.elf
+	#strip build/kernel.elf
 	
 	mcopy -i build/part.img build/bootx64.efi ::/EFI/BOOT
 	mcopy -i build/part.img build/kernel.elf ::/
@@ -87,7 +87,8 @@ clean:
 	rm -rf build
 	
 disassemble:
-	rm -rf dis.txt
+	rm -rf dis.txt symbols.txt
+	objdump -C --syms build/kernel-x86_64.elf >> symbols.txt
 	objdump -S -d -C -g -M intel-mnemonic --no-show-raw-insn build/kernel-x86_64.elf >> dis.txt
 
 run:

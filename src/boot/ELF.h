@@ -14,7 +14,7 @@ typedef unsigned short Elf64Section;
 
 uint64 GetELFSize(const uint8* image);
 uint64 GetELFTextAddr(const uint8* image, const uint8* processImg);
-bool PrepareELF(const uint8* diskImg, uint8* processImg, Elf64Addr* entryPoint);
+bool PrepareELF(const uint8* diskImg, uint8* processImg, Elf64Addr* entryPoint, Elf64Addr* debugSymbol, Elf64Addr* debugStrings);
 
 struct ELFHeader {
     Elf64Byte magic[4];

@@ -4,6 +4,7 @@
 #include "IO.hpp"
 #include <string.h>
 #include "MemoryUtils.hpp"
+#include "Partition.hpp"
 
 /* STATUS */
 #define ATA_SR_BSY                  0x80    // Busy
@@ -94,8 +95,9 @@ static inline void sleep(int d)
     for (int a = 0; a < d; a++)
         /* Port 0x80 is used for 'checkpoints' during POST. */
         /* The Linux kernel seems to think it is free for use :-/ */
-        asm volatile ( "outb %%al, $0x80" : : "a"(0) );
+        //asm volatile ( "outb %%al, $0x80" : : "a"(0) );
         /* %%al instead of %0 makes no difference.  TODO: does the register need to be zeroed? */
+        sleep(0);
 }
 
 void CreateATADevice(uint8_t bus, uint8_t device, uint8_t function, char* pciDevice)
@@ -151,6 +153,8 @@ void CreateATADevice(uint8_t bus, uint8_t device, uint8_t function, char* pciDev
                 snprintf(name2, 5, "IDE%d", id);
                 new ATADevice(pciDevice, name2, &channels[i], j);
                 id++;
+
+                CreatePartitions(name2);
             }
         }
 }
@@ -240,7 +244,7 @@ uint64_t ATADevice::Read(uint64_t pos, void* buffer, uint64_t bufferSize)
 { 
     uint64_t returnValue = 0;
 
-    if (*(uint8_t*)buffer == 0 && bufferSize > 1)
+    if (*(uint8_t*)buffer == 0xFF && bufferSize > 1)
     {
         if (*((uint8_t*)buffer + 1) == 0)
         {
@@ -263,7 +267,7 @@ uint64_t ATADevice::Read(uint64_t pos, void* buffer, uint64_t bufferSize)
     {
         uint8_t* package = (uint8_t*)buffer;
 
-        uint32_t lba = pos; //*(uint32_t*)(package + 1);
+        uint32_t lba = pos / 512; //*(uint32_t*)(package + 1);
         uint8_t numsects = (bufferSize - 1) / 512;
 
         if ((bufferSize - 1) < 512 && numsects == 0)
@@ -513,10 +517,7 @@ uint8_t ATADevice::ATAAccess(uint8_t direction, uint32_t lba, uint8_t numsects, 
             {
                 if (err = IDEPolling(*channel, 1))
                     return err; // Polling, set error and exit if there is.
-                //asm("pushw %es");
-                //asm("mov %%ax, %%es" : : "a"(selector));
-                asm("rep insw" : : "c"(words), "d"(bus), "D"(edi)); // Receive Data.
-                //asm("popw %es");
+                IO::InString::Word(bus, edi, words); // Receive Data.
                 edi += (words*2);
             }
         }
@@ -526,10 +527,7 @@ uint8_t ATADevice::ATAAccess(uint8_t direction, uint32_t lba, uint8_t numsects, 
             for (i = 0; i < numsects; i++) 
             {
                 IDEPolling(*channel, 0); // Polling.
-                //asm("pushw %ds");
-                //asm("mov %%ax, %%ds"::"a"(selector));
-                asm("rep outsw"::"c"(words), "d"(bus), "S"(edi)); // Send Data
-                //asm("popw %ds");
+                IO::OutString::Word(bus, edi, words); // Send Data
                 edi += (words*2);
             }
             IDEWrite(*channel, ATA_REG_COMMAND, ((uint8_t []) {
