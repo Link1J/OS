@@ -93,7 +93,7 @@ disassemble:
 
 run:
 	rm -rf log.txt
-	$(QEMU) -bios OVMF.fd $(QEMU_DRIVE_1) -m 2048M -s -d cpu_reset -D log.txt -serial file:serial.log
+	$(QEMU) -bios OVMF.fd $(QEMU_DRIVE_1) -m 3G -s -d cpu_reset -D log.txt -serial file:serial.log
 
 $(BOOTLOADER): $(BOOT_OBJS)
 	mkdir -p $(dir $@)

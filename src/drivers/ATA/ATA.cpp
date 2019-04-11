@@ -260,6 +260,7 @@ uint64_t ATADevice::Read(uint64_t pos, void* buffer, uint64_t bufferSize)
         }
         else if (*((uint8_t*)buffer + 1) == 1 && bufferSize > 3)
         {
+            printf("Drive Size: %d\n", size);
             *((uint32_t*)buffer) = size;
         }
     }
