@@ -15,7 +15,11 @@ namespace KernelHeap {
         size = (size + 4095) / 4096;
         void* g = MemoryManager::AllocatePages(size);
         for(int i = 0; i < size; i++)
-            MemoryManager::MapKernelPage((char*)g + 4096 * i, (char*)heapPos + 4096 * i);
+        {
+            //printf("Start: %016llX, Size: %016llX, Max: %016llX, Current: %016llX\n",
+            //    (uint64_t)heapPos, size * 4096, (uint64_t)heapPos + (4096 * size),  (uint64_t)heapPos + (4096 * i));
+            MemoryManager::MapKernelPage((char*)g + (4096 * i), (char*)heapPos + (4096 * i));
+        }
         freeMemory.MarkFree((void*)heapPos, size * 4096);
         void* ret = (void*)heapPos;
         heapPos += size * 4096;

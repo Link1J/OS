@@ -5,3 +5,4 @@ log.txt
 .gdb_history
 serial.log
 .vscode/
+symbols.txt

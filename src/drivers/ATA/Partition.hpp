@@ -59,16 +59,18 @@ void CreatePartionsFromGPT(const char* driveName)
     snprintf(buffer, 513, "/System/Drives/%s", driveName);
     uint64_t file = VFS::OpenFile(buffer);
 
-    buffer[0] = 0;
+    buffer[0] = 0xFF;
     buffer[1] = 1;
     VFS::ReadFile(file, buffer, 513);
     uint64_t size = *(uint32_t*)buffer;
     uint64_t a = 0, number = 0, id = 0;
     uint32_t numberOfPartitions;
     uint32_t sizeOfPartitionData;
-
+    
     uint64_t length = strlen(driveName);
     char* fileName = new char[length + 5];
+
+    printf("Drive Size: %d\n", size);
 
     if (size > 0)
     {

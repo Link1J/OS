@@ -17,14 +17,14 @@ namespace MemoryManager
 	private:
 		Segment* 	head;
 		Segment* 	tail;
-		int 		size;
+		uint64_t	size;
 	
 	public:
 		MemoryList(): head(nullptr), tail(nullptr), size(0) {}
 		
 		Segment*	Begin	() { return head	; }
 		Segment*	End		() { return nullptr	; }
-		int			Size	() { return size	; }
+		uint64_t	Size	() { return size	; }
 		
 		void MarkFree(void* memory, uint64_t size)
 		{
@@ -65,12 +65,15 @@ namespace MemoryManager
 			Segment* pages = (Segment*)segment;
 			if (pages->size == sizeWanted)
 			{
-				pages->prev->next = pages->next;
-
 				if (tail == pages)
 					tail = pages->prev;
 				else 
 					pages->next->prev = pages->prev;
+
+				if (head == pages)
+					tail = pages->next;
+				else 
+					pages->prev->next = pages->next;
 				
 				size--;
 			}
@@ -83,13 +86,13 @@ namespace MemoryManager
 				newNode->base = pages->base + sizeWanted;
 				newNode->size = pages->size - sizeWanted;
 						
-				if(pages->prev != nullptr)
-					pages->prev->next = newNode;
+				if(newNode->prev != nullptr)
+					newNode->prev->next = newNode;
 				else
 					head = newNode;
 						
-				if(pages->next != nullptr)
-					pages->next->prev = newNode;
+				if(newNode->next != nullptr)
+					newNode->next->prev = newNode;
 				else
 					tail = newNode;
 			}

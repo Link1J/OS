@@ -26,9 +26,9 @@ extern "C" void KernelMain(KernelHeader* info)
 {
 	printf("Kernel's Position in memory: %016llX\n", info->kernelImage.buffer);
 
-	MemoryManager	::Init(info->physMapStart, info->pageBuffer, info->highMemoryBase										);
 	GDT				::Init((uint64_t)info->kernelImage.buffer																);
 	IDT				::Init((uint64_t)info->kernelImage.buffer, (uint64_t)info->debugSymbols, (uint64_t)info->debugStrings	);
+	MemoryManager	::Init(info->physMapStart, info->pageBuffer, info->highMemoryBase										);
 	VFS				::Init(																									);
 
 	PrintOutCPUIDInfo();
