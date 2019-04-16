@@ -36,13 +36,18 @@ namespace Terminal
 		{
 			do
 			{
-				buffer[0] = 0;
+				buffer[0] = 0xFF;
 				buffer[1] = 0;
+				buffer[2] = 0;
 				number = VFS::ReadFile(file, buffer, 2);
 				if (buffer[0] == 0)
 					buffer[0] = ' ';
+				if (buffer[1] == 0)
+					buffer[1] = ' ';
+				buffer[2] = 0;
 				if (number > 0)
-					VFS::WriteFile(stdio, buffer, 2);
+					//VFS::WriteFile(stdio, buffer, 2);
+				printf("%s", buffer);
 			}
 			while (number > 0);
 
