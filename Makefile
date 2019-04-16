@@ -53,9 +53,24 @@ BIN = build
 OBJ = $(BIN)
 
 QEMU = qemu-system-$(ARCH)
+
+QEMU_OPTIONS      = -m 3G -s -d cpu_reset -D log.txt -serial file:serial.log -monitor stdio
+
 QEMU_DRIVE_1_SATA = -drive file=$(HDD_IMAGE),if=none,id=C -device ich9-ahci,id=ahci -device ide-drive,drive=C,bus=ahci.0
-QEMU_DRIVE_1 = -drive file=$(HDD_IMAGE),media=disk,format=raw
-QEMU_DRIVE_2 = -cdrom i:\
+QEMU_DRIVE_1_IDE  = -drive file=$(HDD_IMAGE),media=disk,format=raw
+QEMU_DRIVE_2      = -cdrom i:
+QEMU_DRIVES       = $(QEMU_DRIVE_1_IDE)
+
+QEMU_USB_XHCI_BUS = -device qemu-xhci,id=xhci
+QEMU_USB_UHCI_BUS = -device ich9-usb-uhci3,id=uhci
+QEMU_USB_OHCI_BUS = -device pci-ohci,id=ohci
+QEMU_USB_EHCI_BUS = -device usb-ehci,id=ehci
+QEMU_USB_BUSES    = $(QEMU_USB_OHCI_BUS) $(QEMU_USB_UHCI_BUS) $(QEMU_USB_EHCI_BUS) $(QEMU_USB_XHCI_BUS)
+
+QEMU_USB_MOUSE    = -device usb-mouse,bus=ohci.0
+QEMU_USB_TABLET   = -device usb-tablet,bus=uhci.0
+QEMU_DEVICES      = $(QEMU_USB_MOUSE) $(QEMU_USB_TABLET)
+
 
 WSLENV ?= notwsl
 ifndef WSLENV
@@ -101,9 +116,9 @@ disassemble:
 	@objdump -C --syms build/kernel-x86_64.elf >> symbols.txt
 	@objdump -S -d -C -g -M intel-mnemonic --no-show-raw-insn build/kernel-x86_64.elf >> dis.txt
 
-run:
+run: buildHDImg
 	@rm -rf log.txt
-	@$(QEMU) -bios OVMF.fd $(QEMU_DRIVE_1) -m 3G -s -d cpu_reset -D log.txt -serial file:serial.log
+	@$(QEMU) -bios OVMF.fd  $(QEMU_OPTIONS) $(QEMU_USB_BUSES) $(QEMU_DRIVES) $(QEMU_DEVICES)
 
 $(BOOTLOADER): $(BOOT_OBJS)
 	@echo Building $@
