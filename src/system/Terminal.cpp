@@ -44,10 +44,8 @@ namespace Terminal
 					buffer[0] = ' ';
 				if (buffer[1] == 0)
 					buffer[1] = ' ';
-				buffer[2] = 0;
 				if (number > 0)
-					//VFS::WriteFile(stdio, buffer, 2);
-				printf("%s", buffer);
+					VFS::WriteFile(stdio, buffer, 2);
 			}
 			while (number > 0);
 
