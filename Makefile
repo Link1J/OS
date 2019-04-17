@@ -41,7 +41,13 @@ KERNEL_LD_FLAGS	= -g -fPIC -nostdlib -shared -mfloat-abi=soft
 CC_KERN = clang
 CC_BOOT = clang -target x86_64-w64-mingw32
 
+
+WSLENV ?= notwsl
+ifndef WSLENV
+QEMU = qemu-system-$(ARCH).exe
+else
 QEMU = qemu-system-$(ARCH)
+endif
 
 QEMU_OPTIONS      = -m 3G -s -d cpu_reset -D log.txt -serial file:serial.log -monitor stdio
 
@@ -59,13 +65,6 @@ QEMU_USB_BUSES    = $(QEMU_USB_OHCI_BUS) $(QEMU_USB_UHCI_BUS) $(QEMU_USB_EHCI_BU
 QEMU_USB_MOUSE    = -device usb-mouse,bus=ohci.0
 QEMU_USB_TABLET   = -device usb-tablet,bus=uhci.0
 QEMU_DEVICES      = $(QEMU_USB_MOUSE) $(QEMU_USB_TABLET)
-
-
-
-WSLENV ?= notwsl
-ifndef WSLENV
-QEMU = qemu-system-$(ARCH).exe
-endif
 
 .PHONY: clean build run buildHDImg createHDImg disassemble
 

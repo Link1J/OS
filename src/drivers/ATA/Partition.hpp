@@ -69,9 +69,7 @@ void CreatePartionsFromGPT(const char* driveName)
     
     uint64_t length = strlen(driveName);
     char* fileName = new char[length + 5];
-
-    printf("Drive Size: %d\n", size);
-
+    
     if (size > 0)
     {
         do
